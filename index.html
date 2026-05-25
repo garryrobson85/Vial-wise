@@ -15,9 +15,9 @@
       <div class="brand-mark">V</div>
       <div><strong>VialWise</strong><span>Private GLP-1 and peptide companion</span></div>
     </div>
-    <div class="mode-switch" role="group" aria-label="Experience mode">
-      <button id="beginnerMode" class="mode-btn active" type="button">Beginner</button>
-      <button id="advancedMode" class="mode-btn" type="button">Advanced</button>
+    <div class="mode-switch" role="group" aria-label="Tracking mode">
+      <button id="penMode" class="mode-btn active" type="button">Pre-filled pen</button>
+      <button id="vialMode" class="mode-btn" type="button">Vials</button>
     </div>
     <nav id="tabs" class="nav-tabs">
       <button class="tab active" data-view="today">Today</button>
@@ -29,10 +29,10 @@
       <button class="tab" data-view="food">Food</button>
       <button class="tab" data-view="symptoms">Symptoms</button>
       <button class="tab" data-view="logs">Daily Log</button>
-      <button class="tab advanced-tab" data-view="vials">Vials & Costs</button>
-      <button class="tab advanced-tab" data-view="calc">Reconstitution</button>
-      <button class="tab advanced-tab" data-view="peptides">Other Peptides</button>
-      <button class="tab advanced-tab" data-view="export">Export</button>
+      <button class="tab vial-tab" data-view="vials">Vials & Costs</button>
+      <button class="tab vial-tab" data-view="calc">Reconstitution</button>
+      <button class="tab vial-tab" data-view="peptides">Other Peptides</button>
+      <button class="tab" data-view="export">Export</button>
     </nav>
     <p class="disclaimer"><b>Safety first:</b> VialWise stores user-entered data and performs arithmetic only. It does not recommend doses, compounds, peptides or treatment.</p>
   </aside>
@@ -42,7 +42,7 @@
       <div><p class="eyebrow">Local private tracker</p><h1 id="pageTitle">Today</h1></div>
       <div class="top-actions"><button id="sampleBtn" class="ghost">Load demo</button><button id="clearBtn" class="danger ghost">Clear</button></div>
     </header>
-    <section class="notice"><b>Designed for real daily use:</b> start simple with GLP-1 tracking, then unlock vials, reconstitution, peptide logs, backup and richer pattern tracking when needed.</section>
+    <section class="notice"><b>Designed for real daily use:</b> use Pre-filled pen mode for simple pen cost and dose tracking, or Vials mode for fully customised vial, reconstitution and peptide logs.</section>
 
     <section id="today" class="view active">
       <div class="hero-panel">
@@ -52,8 +52,8 @@
       <div class="grid stats-grid">
         <article class="card stat"><span>Current GLP-1</span><strong id="statMode">-</strong></article>
         <article class="card stat"><span>Dose</span><strong id="statDose">-</strong></article>
-        <article class="card stat advanced-metric"><span>Total spend</span><strong id="statSpend">GBP 0.00</strong></article>
-        <article class="card stat advanced-metric"><span>Remaining value</span><strong id="statValue">GBP 0.00</strong></article>
+        <article class="card stat cost-metric"><span>Total spend</span><strong id="statSpend">GBP 0.00</strong></article>
+        <article class="card stat cost-metric"><span>Remaining value</span><strong id="statValue">GBP 0.00</strong></article>
         <article class="card stat"><span>Doses left</span><strong id="statDoses">0</strong></article>
         <article class="card stat"><span>Food entries</span><strong id="statFood">0</strong></article>
       </div>
@@ -62,12 +62,12 @@
         <article class="card"><h2>Smart prompts</h2><div id="promptBox" class="prompt-list"></div></article>
       </div>
       <div class="grid two-col">
-        <article class="card advanced-metric"><h2>Cost snapshot</h2><div id="costSnapshot" class="result muted">Add a vial or pen to calculate cost per injection.</div></article>
+        <article class="card cost-metric"><h2>Cost snapshot</h2><div id="costSnapshot" class="result muted">Add a vial or pen to calculate cost per injection.</div></article>
         <article class="card"><h2>Food & symptom signal</h2><div id="todayInsights" class="muted">Add food and symptom entries to see pattern hints.</div></article>
       </div>
     </section>
 
-    <section id="setup" class="view"><article class="card"><h2>Onboarding</h2><form id="settingsForm" class="form-grid"><label>Primary journey<select name="journey"><option>GLP-1 weight journey</option><option>General wellness tracking</option><option>Research tracking</option></select></label><label>How do you take it?<select name="delivery"><option>Reconstituted vial</option><option>Pre-filled pen</option><option>Both</option><option>Not sure yet</option></select></label><label>Experience mode<select name="mode"><option value="beginner">Beginner</option><option value="advanced">Advanced</option></select></label><label>Current GLP-1<select name="glp1" id="settingsGlp1"></select></label><label>Current dose<select name="currentDose" id="settingsDose"></select></label><label>Custom dose amount<input name="customDose" id="settingsCustomDose" type="number" step="0.001" min="0" placeholder="Optional"></label><label>Dose unit<select name="doseUnit" id="settingsDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>Preferred weight units<select name="units"><option>kg</option><option>lb</option></select></label><label class="wide">Personal notes<textarea name="notes" rows="3" placeholder="Goals, reminders, things to discuss with a professional"></textarea></label><button class="primary">Save setup</button><span id="settingsSaved" class="save-note" aria-live="polite"></span></form></article></section>
+    <section id="setup" class="view"><article class="card"><h2>Onboarding</h2><form id="settingsForm" class="form-grid"><label>Primary journey<select name="journey"><option>GLP-1 weight journey</option><option>General wellness tracking</option><option>Research tracking</option></select></label><label>Tracking mode<select name="mode"><option value="pen">Pre-filled pen</option><option value="vials">Vials / reconstitution</option></select></label><label>Current GLP-1<select name="glp1" id="settingsGlp1"></select></label><label>Current dose<select name="currentDose" id="settingsDose"></select></label><label>Custom dose amount<input name="customDose" id="settingsCustomDose" type="number" step="0.001" min="0" placeholder="Optional"></label><label>Dose unit<select name="doseUnit" id="settingsDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>Pen cost (GBP)<input name="penCost" type="number" step="0.01" min="0" placeholder="For pre-filled pen mode"></label><label>Doses per pen<input name="penDoses" type="number" step="1" min="0" placeholder="Example: 4"></label><label>Preferred weight units<select name="units"><option>kg</option><option>lb</option></select></label><label class="wide">Personal notes<textarea name="notes" rows="3" placeholder="Goals, reminders, things to discuss with a professional"></textarea></label><button class="primary">Save setup</button><span id="settingsSaved" class="save-note" aria-live="polite"></span></form></article></section>
 
     <section id="glp1" class="view"><div class="grid two-col"><article class="card"><h2>Dose journey</h2><p class="muted">Track user-entered dose changes over time so the journey is visible, not just today's current amount.</p><form id="doseHistoryForm" class="form-grid single"><label>Date<input name="date" type="date" required></label><label>Medication<select name="glp1" id="doseHistoryGlp1"></select></label><label>Dose amount<input name="amount" type="number" step="0.001" min="0" required></label><label>Unit<select name="unit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Reason for change, tolerance, clinician notes"></textarea></label><button class="primary">Save dose point</button></form></article><article class="card warning-card"><h2>Red flags</h2><p>Seek urgent medical advice for severe abdominal pain, repeated vomiting, dehydration, chest pain, breathlessness, severe allergic reaction, fainting, confusion, or injection-site infection.</p></article></div><div id="doseHistoryList" class="list"></div></section>
 

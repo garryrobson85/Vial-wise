@@ -15,12 +15,14 @@ const defaults = {
   settings: {
     journey: 'GLP-1 weight journey',
     delivery: 'Reconstituted vial',
-    mode: 'beginner',
+    mode: 'pen',
     units: 'kg',
     glp1: 'semaglutide',
     currentDose: '0.25',
     customDose: '',
-    doseUnit: 'mg'
+    doseUnit: 'mg',
+    penCost: '',
+    penDoses: ''
   },
   vials: [],
   schedule: [],
@@ -125,11 +127,15 @@ function pageTitle() {
 }
 
 function applyMode() {
-  const mode = db.settings.mode || 'beginner';
-  $('#beginnerMode').classList.toggle('active', mode === 'beginner');
-  $('#advancedMode').classList.toggle('active', mode === 'advanced');
-  $$('.advanced-tab').forEach(tab => tab.classList.toggle('hidden', mode !== 'advanced'));
-  $$('.advanced-metric').forEach(item => item.classList.toggle('hidden', mode !== 'advanced'));
+  if (db.settings.mode === 'beginner') db.settings.mode = 'pen';
+  if (db.settings.mode === 'advanced') db.settings.mode = 'vials';
+  const mode = db.settings.mode || 'pen';
+  db.settings.mode = mode;
+  if ($('#settingsForm')?.elements.mode) $('#settingsForm').elements.mode.value = mode;
+  $('#penMode').classList.toggle('active', mode === 'pen');
+  $('#vialMode').classList.toggle('active', mode === 'vials');
+  $$('.vial-tab').forEach(tab => tab.classList.toggle('hidden', mode !== 'vials'));
+  $$('.cost-metric').forEach(item => item.classList.remove('hidden'));
   const active = $('.tab.active');
   if (active?.classList.contains('hidden')) switchView('today');
 }
@@ -147,15 +153,15 @@ $('#tabs').addEventListener('click', e => {
   switchView(e.target.dataset.view);
 });
 
-$('#beginnerMode').addEventListener('click', () => {
-  db.settings.mode = 'beginner';
-  $('#settingsForm').elements.mode.value = 'beginner';
+$('#penMode').addEventListener('click', () => {
+  db.settings.mode = 'pen';
+  $('#settingsForm').elements.mode.value = 'pen';
   save();
 });
 
-$('#advancedMode').addEventListener('click', () => {
-  db.settings.mode = 'advanced';
-  $('#settingsForm').elements.mode.value = 'advanced';
+$('#vialMode').addEventListener('click', () => {
+  db.settings.mode = 'vials';
+  $('#settingsForm').elements.mode.value = 'vials';
   save();
 });
 
@@ -191,12 +197,44 @@ function vialName(i) {
 }
 
 function autoCost(s) {
-  if (s.vialId === 'current-glp1') return 0;
+  if (s.vialId === 'current-glp1') return penCostPerDose();
   const v = db.vials.find(item => item.id === s.vialId);
   if (!v) return 0;
   const totalMcg = totalInventoryMcg(v);
   const doseMcg = mcg(s.amount ?? s.amountMcg ?? v.dose ?? v.doseMcg, s.amountUnit || v.doseUnit || 'mg');
   return totalMcg && num(v.cost) && doseMcg ? (num(v.cost) / totalMcg) * doseMcg : 0;
+}
+
+function isPenMode() {
+  return (db.settings.mode || 'pen') === 'pen';
+}
+
+function penTakenCount() {
+  return db.schedule.filter(s => s.vialId === 'current-glp1' && s.status === 'Taken').length;
+}
+
+function penCostPerDose() {
+  const doses = num(db.settings.penDoses);
+  return doses ? num(db.settings.penCost) / doses : 0;
+}
+
+function penDosesLeft() {
+  const doses = num(db.settings.penDoses);
+  return Math.max(0, doses - penTakenCount());
+}
+
+function inventoryTotals() {
+  if (isPenMode()) {
+    const spend = num(db.settings.penCost);
+    const perDose = penCostPerDose();
+    const left = penDosesLeft();
+    return { spend, value: perDose * left, doses: left, cost: perDose };
+  }
+  const spend = db.vials.reduce((a, v) => a + num(v.cost), 0);
+  const value = db.vials.reduce((a, v) => a + remainingValue(v), 0);
+  const doses = db.vials.reduce((a, v) => a + dosesLeft(v), 0);
+  const cost = db.vials.map(costPerDose).find(Boolean) || 0;
+  return { spend, value, doses, cost };
 }
 
 function nextSchedule() {
@@ -240,11 +278,10 @@ function prefillSchedule() {
   $('#scheduleAmountUnit').value = dose.unit;
 }
 
-function renderToday(spend, value, doses) {
+function renderToday(spend, value, doses, cost) {
   const dose = currentDose();
   const due = db.schedule.filter(s => s.date === today());
   const next = nextSchedule();
-  const cost = db.vials.map(costPerDose).find(Boolean) || 0;
   $('#todayPlan').textContent = `${glpName()} ${doseText(dose.amount, dose.unit)}`;
   $('#todaySub').textContent = due.length ? `${due.length} schedule entr${due.length === 1 ? 'y' : 'ies'} due today.` : 'No injection scheduled today.';
   $('#heroCost').textContent = `${money(cost)} / injection`;
@@ -256,15 +293,13 @@ function renderToday(spend, value, doses) {
     db.logs.some(l => l.date === today()) ? 'Daily check-in completed today.' : 'Add appetite, nausea, energy and mood today.',
     db.foods.some(f => f.date === today()) ? 'Food logged today.' : 'Log food if symptoms appear later.'
   ].map(item => `<div class="prompt"><b>+</b><span>${esc(item)}</span></div>`).join('');
-  $('#costSnapshot').innerHTML = cost ? `<b>${money(cost)}</b> estimated per injection<br><b>${money(cost * 4.33)}</b> estimated monthly if weekly<br><b>${doses}</b> total estimated doses left<br><b>${money(value)}</b> remaining value from ${money(spend)} spend` : 'Add a vial or pen to calculate cost per injection.';
+  $('#costSnapshot').innerHTML = cost ? `<b>${money(cost)}</b> estimated per injection<br><b>${money(cost * 4.33)}</b> estimated monthly if weekly<br><b>${doses}</b> estimated doses left<br><b>${money(value)}</b> remaining value from ${money(spend)} spend` : (isPenMode() ? 'Add pen cost and doses per pen in Setup.' : 'Add a vial or pen to calculate cost per injection.');
   $('#todayInsights').innerHTML = insights();
 }
 
 function render() {
   applyMode();
-  const spend = db.vials.reduce((a, v) => a + num(v.cost), 0);
-  const value = db.vials.reduce((a, v) => a + remainingValue(v), 0);
-  const doses = db.vials.reduce((a, v) => a + dosesLeft(v), 0);
+  const { spend, value, doses, cost } = inventoryTotals();
   const dose = currentDose();
   $('#statMode').textContent = glpName();
   $('#statDose').textContent = doseText(dose.amount, dose.unit);
@@ -272,9 +307,9 @@ function render() {
   $('#statValue').textContent = money(value);
   $('#statDoses').textContent = doses;
   $('#statFood').textContent = db.foods.length;
-  renderToday(spend, value, doses);
+  renderToday(spend, value, doses, cost);
 
-  $('#scheduleVial').innerHTML = `<option value="current-glp1">Current GLP-1: ${esc(glpName())} ${esc(doseText())}</option><option value="">Choose saved vial / pen</option>` + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+  $('#scheduleVial').innerHTML = `<option value="current-glp1">Current GLP-1: ${esc(glpName())} ${esc(doseText())}${isPenMode() ? ' pen' : ''}</option>` + (isPenMode() ? '' : '<option value="">Choose saved vial / pen</option>' + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join(''));
   if ($('#schedule')?.classList.contains('active')) prefillSchedule();
   $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><button onclick="del('vials','${v.id}')">Delete</button></div><div><span class="pill">${itemQuantity(v)} item${itemQuantity(v) === 1 ? '' : 's'}</span><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)} total</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.amount ?? v.amountMg ?? 0)} ${esc(v.amountUnit || 'mg')} each | total ${cleanNumber(totalInventoryMcg(v) / 1000)} mg | remaining ${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
   $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><button onclick="del('schedule','${s.id}')">Delete</button></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
@@ -509,7 +544,7 @@ $('#importJson').addEventListener('change', async e => {
 });
 
 $('#sampleBtn').addEventListener('click', () => {
-  db.settings = { ...db.settings, mode: 'advanced', glp1: 'semaglutide', currentDose: '0.25', customDose: '', doseUnit: 'mg' };
+  db.settings = { ...db.settings, mode: 'vials', glp1: 'semaglutide', currentDose: '0.25', customDose: '', doseUnit: 'mg', penCost: '120', penDoses: '4' };
   db.vials = [{ id: 'v1', name: 'Semaglutide 5mg vials', type: 'GLP-1', quantity: '2', amount: '5', amountUnit: 'mg', water: '10', waterUnit: 'units', remaining: '8.5', remainingUnit: 'mg', dose: '0.25', doseUnit: 'mg', cost: '85', batch: 'Demo', expiry: '2026-12-01', notes: 'Demo: 2 x 5mg vials' }];
   db.schedule = [{ id: 's1', vialId: 'v1', date: today(), time: '09:00', amount: '0.25', amountUnit: 'mg', site: 'Left abdomen', status: 'Planned', notes: 'Demo entry' }];
   db.doseHistory = [{ id: 'd1', date: today(), glp1: 'semaglutide', amount: '0.25', unit: 'mg', notes: 'Demo start point' }];

@@ -4,7 +4,8 @@ Private GLP-1 and peptide tracking companion for local-first dose logs, costs, r
 
 ## What is included
 
-- Beginner / Advanced mode navigation
+- Pre-filled pen / Vials mode navigation
+- Pre-filled pen cost per dose and doses-per-pen tracking
 - GLP-1 onboarding for Semaglutide, Tirzepatide and Retatrutide
 - Dose journey timeline
 - Schedule and injection site rotation tracking
