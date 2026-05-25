@@ -22,7 +22,8 @@ const defaults = {
     customDose: '',
     doseUnit: 'mg',
     penCost: '',
-    penDoses: ''
+    penDoses: '',
+    feedback: 'on'
   },
   vials: [],
   schedule: [],
@@ -32,6 +33,7 @@ const defaults = {
   logs: [],
   doseHistory: [],
   peptides: [],
+  peptideSymptoms: [],
   foodIdeas: [],
   compounds: []
 };
@@ -46,6 +48,7 @@ function loadDb() {
     symptoms: loaded.symptoms || [],
     doseHistory: loaded.doseHistory || [],
     peptides: loaded.peptides || loaded.compounds || [],
+    peptideSymptoms: loaded.peptideSymptoms || [],
     foodIdeas: loaded.foodIdeas || []
   };
 }
@@ -63,6 +66,26 @@ const cleanNumber = n => String(Number(n || 0).toFixed(3)).replace(/\.?0+$/, '')
 const esc = s => String(s || '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const formObj = form => Object.fromEntries(new FormData(form).entries());
 const today = () => new Date().toISOString().slice(0, 10);
+
+function feedback(kind = 'tap') {
+  if ((db.settings.feedback || 'on') === 'off') return;
+  if (navigator.vibrate) navigator.vibrate(kind === 'save' ? [18, 25, 18] : 12);
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = feedback.ctx || (feedback.ctx = new AudioCtx());
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = kind === 'save' ? 'sine' : 'triangle';
+    osc.frequency.value = kind === 'save' ? 740 : 520;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(kind === 'save' ? 0.035 : 0.02, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (kind === 'save' ? 0.14 : 0.07));
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (kind === 'save' ? 0.16 : 0.08));
+  } catch {}
+}
 
 function mcg(amount, unit) {
   return num(amount) * (unit === 'mg' ? 1000 : 1);
@@ -116,11 +139,15 @@ function hydrateSettings() {
 }
 
 function setTodayDefaults() {
-  ['scheduleForm', 'weightForm', 'foodForm', 'symptomForm', 'logForm', 'doseHistoryForm'].forEach(formId => {
+  ['scheduleForm', 'weightForm', 'foodForm', 'symptomForm', 'logForm', 'doseHistoryForm', 'peptideSymptomForm'].forEach(formId => {
     const input = $(`#${formId} input[name="date"]`);
     if (input && !input.value) input.value = today();
   });
 }
+
+document.addEventListener('click', e => {
+  if (e.target.closest('button, .import-label')) feedback('tap');
+});
 
 function pageTitle() {
   $('#pageTitle').textContent = $('.tab.active')?.textContent || 'Today';
@@ -312,7 +339,7 @@ function render() {
   $('#scheduleVial').innerHTML = `<option value="current-glp1">Current GLP-1: ${esc(glpName())} ${esc(doseText())}${isPenMode() ? ' pen' : ''}</option>` + (isPenMode() ? '' : '<option value="">Choose saved vial / pen</option>' + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join(''));
   if ($('#schedule')?.classList.contains('active')) prefillSchedule();
   $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><button onclick="del('vials','${v.id}')">Delete</button></div><div><span class="pill">${itemQuantity(v)} item${itemQuantity(v) === 1 ? '' : 's'}</span><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)} total</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.amount ?? v.amountMg ?? 0)} ${esc(v.amountUnit || 'mg')} each | total ${cleanNumber(totalInventoryMcg(v) / 1000)} mg | remaining ${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
-  $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><button onclick="del('schedule','${s.id}')">Delete</button></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
+  $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><button onclick="del('schedule','${s.id}')">Delete</button></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>${s.repeatLabel ? esc(s.repeatLabel) + ' | ' : ''}Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
   $('#siteSummary').textContent = nextSiteSuggestion();
   renderSiteHistory();
   $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
@@ -321,6 +348,8 @@ function render() {
   $('#logList').innerHTML = [...db.logs].sort((a, b) => b.date.localeCompare(a.date)).map(l => `<article class="item"><b>${esc(l.date)}</b><span>Appetite ${esc(l.appetite || '-')} | nausea ${esc(l.nausea || '-')} | energy ${esc(l.energy || '-')} | mood ${esc(l.mood || '-')} | ${esc(l.digestion || '-')}</span><p>${esc(l.notes || '')}</p></article>`).join('') || '<div class="empty">No daily logs.</div>';
   $('#doseHistoryList').innerHTML = [...db.doseHistory].sort((a, b) => b.date.localeCompare(a.date)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)}: ${esc(glpName(d.glp1))} ${esc(doseText(d.amount, d.unit))}</b><button onclick="del('doseHistory','${d.id}')">Delete</button></div><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No dose journey points yet.</div>';
   $('#peptideList').innerHTML = db.peptides.map(p => `<article class="item"><div class="item-head"><b>${esc(p.name)}</b><button onclick="del('peptides','${p.id}')">Delete</button></div><div><span class="pill">${esc(p.category || 'User-entered')}</span><span class="pill">${esc(doseText(p.amount, p.unit))}</span><span class="pill">${esc(p.frequency || 'No frequency')}</span></div><small>Start ${esc(p.startDate || '-')} | source ${esc(p.source || '-')} | storage ${esc(p.storage || '-')}</small><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No other peptides tracked.</div>';
+  $('#peptideSymptomList').innerHTML = [...db.peptideSymptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(p => `<article class="item"><div class="item-head"><b>${esc(p.date)} ${esc(p.time || '')}: ${esc(p.symptom)}</b><button onclick="del('peptideSymptoms','${p.id}')">Delete</button></div><span>${esc(p.peptides || 'No peptide named')} | severity ${esc(p.severity || 0)}/10 | ${esc(p.timing || 'Timing not set')}</span><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No peptide symptom logs yet.</div>';
+  $('#peptideInsights').innerHTML = peptideInsights();
   $('#foodInsights').innerHTML = insights();
 }
 
@@ -363,6 +392,22 @@ function insights() {
   return out.join('') || 'No same-day food markers are repeating with higher-severity symptoms yet.';
 }
 
+function peptideInsights() {
+  if (!db.peptideSymptoms.length) return 'Add peptide symptom entries to see repeated co-use notes.';
+  const counts = {};
+  db.peptideSymptoms.forEach(entry => {
+    String(entry.peptides || '').split(',').map(x => x.trim()).filter(Boolean).forEach(name => {
+      const key = name.toLowerCase();
+      counts[key] ||= { name, high: 0, total: 0 };
+      counts[key].total++;
+      if (num(entry.severity) >= 5) counts[key].high++;
+    });
+  });
+  const rows = Object.values(counts).filter(x => x.total > 0).sort((a, b) => b.high - a.high || b.total - a.total);
+  if (!rows.length) return 'Name the peptide(s) used in symptom logs to see repeated co-use notes.';
+  return rows.map(x => `<div class="item"><b>${esc(x.name)}</b><span>${x.total} symptom log${x.total === 1 ? '' : 's'}; ${x.high} higher-severity entry${x.high === 1 ? '' : 'ies'}.</span><small>Pattern spotting only: this is not proof of an interaction.</small></div>`).join('');
+}
+
 function suggestMeal(craving, preference) {
   const q = craving.toLowerCase();
   let idea = {
@@ -398,12 +443,33 @@ function normaliseVialForm(data) {
   return data;
 }
 
+function expandSchedule(data) {
+  const repeatEnabled = data.repeatEnabled === 'on';
+  const count = repeatEnabled ? Math.min(52, Math.max(1, Math.floor(num(data.repeatCount) || 1))) : 1;
+  const stepDays = data.repeatEvery === 'daily' ? 1 : 7;
+  const baseDate = new Date(data.date + 'T00:00:00');
+  const groupId = repeatEnabled ? id() : '';
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(baseDate);
+    date.setDate(baseDate.getDate() + index * stepDays);
+    const { repeatEnabled, repeatEvery, repeatCount, ...entry } = data;
+    return {
+      ...entry,
+      date: date.toISOString().slice(0, 10),
+      id: id(),
+      repeatGroupId: groupId,
+      repeatLabel: count > 1 ? `${data.repeatEvery} ${index + 1}/${count}` : ''
+    };
+  });
+}
+
 function bindForm(idName, collection, normalise = data => data) {
   $(`#${idName}`).addEventListener('submit', e => {
     e.preventDefault();
     db[collection].push({ ...normalise(formObj(e.target)), id: id() });
     e.target.reset();
     setTodayDefaults();
+    feedback('save');
     save();
   });
 }
@@ -420,17 +486,26 @@ $('#settingsForm').addEventListener('submit', e => {
   $('#settingsSaved').textContent = 'Saved';
   setTimeout(() => $('#settingsSaved').textContent = '', 1800);
   hydrateSettings();
+  feedback('save');
   render();
 });
 
 bindForm('vialForm', 'vials', normaliseVialForm);
-bindForm('scheduleForm', 'schedule');
+$('#scheduleForm').addEventListener('submit', e => {
+  e.preventDefault();
+  db.schedule.push(...expandSchedule(formObj(e.target)));
+  e.target.reset();
+  setTodayDefaults();
+  feedback('save');
+  save();
+});
 bindForm('weightForm', 'weights');
 bindForm('foodForm', 'foods');
 bindForm('symptomForm', 'symptoms');
 bindForm('logForm', 'logs');
 bindForm('doseHistoryForm', 'doseHistory');
 bindForm('peptideForm', 'peptides');
+bindForm('peptideSymptomForm', 'peptideSymptoms');
 
 $('#mealIdeaForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -438,6 +513,7 @@ $('#mealIdeaForm').addEventListener('submit', e => {
   const idea = suggestMeal(data.craving, data.preference);
   db.foodIdeas.push({ ...data, ...idea, id: id(), date: today() });
   $('#mealIdeaResult').innerHTML = `<b>${esc(idea.title)}</b><p>${esc(idea.swap)}</p><b>Ingredients</b><ul>${idea.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul><b>Recipe</b><ol>${idea.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`;
+  feedback('save');
   save();
 });
 
@@ -522,6 +598,7 @@ $('#exportCsv').addEventListener('click', () => {
   db.foods.forEach(f => rows.push(['food', f.date, f.meal, f.portion, '', f.notes || ''].map(csvCell).join(',')));
   db.symptoms.forEach(s => rows.push(['symptom', s.date, s.symptom, `severity ${s.severity || 0}`, '', s.notes || ''].map(csvCell).join(',')));
   db.peptides.forEach(p => rows.push(['peptide', p.startDate || '', p.name, `${p.amount || ''}${p.unit || ''}`, '', p.notes || ''].map(csvCell).join(',')));
+  db.peptideSymptoms.forEach(p => rows.push(['peptide_symptom', p.date, p.peptides || p.symptom, `severity ${p.severity || 0}`, '', p.notes || ''].map(csvCell).join(',')));
   db.weights.forEach(w => rows.push(['weight', w.date, 'weight', `${w.weight}${w.unit}`, '', w.notes || ''].map(csvCell).join(',')));
   download('vialwise-summary.csv', rows.join('\n'), 'text/csv');
 });
@@ -551,6 +628,7 @@ $('#sampleBtn').addEventListener('click', () => {
   db.foods = [{ id: 'f1', date: today(), meal: 'Coffee and toast', portion: 'Small', fatty: 'No', spicy: 'No', caffeine: 'Yes', notes: 'Demo food entry' }];
   db.symptoms = [{ id: 'y1', date: today(), time: '11:00', symptom: 'Mild nausea', severity: '3', trigger: 'Coffee', notes: 'Demo symptom entry' }];
   db.peptides = [{ id: 'p1', name: 'Example peptide', category: 'Recovery', amount: '1', unit: 'mg', frequency: 'User-entered', startDate: today(), source: 'Demo', storage: 'Label instructions', notes: 'Demo only' }];
+  db.peptideSymptoms = [{ id: 'ps1', date: today(), time: '20:00', peptides: 'Example peptide', symptom: 'Sleep quality changed', severity: '2', timing: 'Same day', notes: 'Demo only' }];
   hydrateSettings();
   save();
 });
