@@ -204,6 +204,15 @@ function latestTakenSite() {
     .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')))[0]?.site || '';
 }
 
+function eightWeekInjections() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 56);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+  return [...db.schedule]
+    .filter(s => s.site && s.date >= cutoffDate && s.status === 'Taken')
+    .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
+}
+
 function nextSiteSuggestion() {
   const last = latestTakenSite();
   if (!last) return 'Start with a site and rotate from there.';
@@ -262,6 +271,7 @@ function render() {
   $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><button onclick="del('vials','${v.id}')">Delete</button></div><div><span class="pill">${itemQuantity(v)} item${itemQuantity(v) === 1 ? '' : 's'}</span><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)} total</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.amount ?? v.amountMg ?? 0)} ${esc(v.amountUnit || 'mg')} each | total ${cleanNumber(totalInventoryMcg(v) / 1000)} mg | remaining ${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
   $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><button onclick="del('schedule','${s.id}')">Delete</button></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
   $('#siteSummary').textContent = nextSiteSuggestion();
+  renderSiteHistory();
   $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
   $('#foodList').innerHTML = [...db.foods].sort((a, b) => b.date.localeCompare(a.date)).map(f => `<article class="item"><b>${esc(f.date)}: ${esc(f.meal)}</b><small>${esc(f.portion)} portion | fatty ${esc(f.fatty)} | spicy ${esc(f.spicy)} | caffeine ${esc(f.caffeine)}</small><p>${esc(f.notes || '')}</p></article>`).join('') || '<div class="empty">No food entries.</div>';
   $('#symptomList').innerHTML = [...db.symptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(s => `<article class="item"><b>${esc(s.date)} ${esc(s.time || '')}: ${esc(s.symptom)}</b><span>Severity ${esc(s.severity || 0)}/10 | possible trigger: ${esc(s.trigger || '-')}</span><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No symptom entries.</div>';
@@ -269,6 +279,29 @@ function render() {
   $('#doseHistoryList').innerHTML = [...db.doseHistory].sort((a, b) => b.date.localeCompare(a.date)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)}: ${esc(glpName(d.glp1))} ${esc(doseText(d.amount, d.unit))}</b><button onclick="del('doseHistory','${d.id}')">Delete</button></div><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No dose journey points yet.</div>';
   $('#peptideList').innerHTML = db.peptides.map(p => `<article class="item"><div class="item-head"><b>${esc(p.name)}</b><button onclick="del('peptides','${p.id}')">Delete</button></div><div><span class="pill">${esc(p.category || 'User-entered')}</span><span class="pill">${esc(doseText(p.amount, p.unit))}</span><span class="pill">${esc(p.frequency || 'No frequency')}</span></div><small>Start ${esc(p.startDate || '-')} | source ${esc(p.source || '-')} | storage ${esc(p.storage || '-')}</small><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No other peptides tracked.</div>';
   $('#foodInsights').innerHTML = insights();
+}
+
+function markerId(site) {
+  return 'mark' + site.replace(/\s+/g, '');
+}
+
+function renderSiteHistory() {
+  const recent = eightWeekInjections();
+  const bySite = Object.fromEntries(siteOrder.map(site => [site, []]));
+  recent.forEach(entry => {
+    if (bySite[entry.site]) bySite[entry.site].push(entry);
+  });
+  siteOrder.forEach(site => {
+    const marker = $('#' + markerId(site));
+    const button = $(`.site-marker[data-site="${site}"]`);
+    const latest = bySite[site][0];
+    if (marker) marker.textContent = bySite[site].length;
+    if (button) {
+      button.classList.toggle('has-history', bySite[site].length > 0);
+      button.title = latest ? `${site}: ${vialName(latest.vialId)} ${latest.amount || latest.amountMcg || '-'} ${latest.amountUnit || (latest.amountMcg ? 'mcg' : 'mg')} on ${latest.date}` : site;
+    }
+  });
+  $('#siteHistory').innerHTML = recent.length ? recent.map(s => `<article class="item"><div class="item-head"><b>${esc(s.site)}</b><span class="pill">${esc(s.date)} ${esc(s.time || '')}</span></div><span>${esc(vialName(s.vialId))} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))}</span><small>${esc(s.notes || '')}</small></article>`).join('') : '<div class="empty">No taken injections in the last 8 weeks.</div>';
 }
 
 function insights() {
@@ -378,7 +411,7 @@ $('#calcBtn').addEventListener('click', () => {
   $('#calcResult').innerHTML = `<b>Concentration:</b> ${concMcgMl.toFixed(2)} mcg/ml<br><b>Volume to measure:</b> ${doseMl.toFixed(4)} ml<br><b>U-100 syringe:</b> ${(doseMl * 100).toFixed(1)} units`;
 });
 
-$$('.body-map button').forEach(b => b.addEventListener('click', () => {
+$$('.body-map button, .site-marker').forEach(b => b.addEventListener('click', () => {
   $('#selectedSite').textContent = b.dataset.site + ' copied to schedule.';
   $('#siteInput').value = b.dataset.site;
 }));
