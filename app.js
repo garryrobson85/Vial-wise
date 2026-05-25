@@ -60,6 +60,7 @@ const defaults = {
   peptides: [],
   peptideSymptoms: [],
   foodIdeas: [],
+  gemini: { apiKey: '', model: 'gemini-2.5-flash', useGemini: 'yes' },
   compounds: []
 };
 
@@ -75,6 +76,7 @@ function loadDb() {
     doseHistory: loaded.doseHistory || [],
     peptides: loaded.peptides || loaded.compounds || [],
     peptideSymptoms: loaded.peptideSymptoms || [],
+    gemini: { apiKey: '', model: 'gemini-2.5-flash', useGemini: 'yes', ...(loaded.gemini || {}) },
     foodIdeas: loaded.foodIdeas || []
   };
 }
@@ -161,6 +163,12 @@ function hydrateSettings() {
   $('#settingsGlp1').value = db.settings.glp1;
   $('#settingsDoseUnit').value = db.settings.doseUnit || 'mg';
   $('#doseHistoryGlp1').value = db.settings.glp1;
+  const geminiForm = $('#geminiForm');
+  if (geminiForm) {
+    geminiForm.elements.geminiApiKey.value = db.gemini?.apiKey || '';
+    geminiForm.elements.geminiModel.value = db.gemini?.model || 'gemini-2.5-flash';
+    geminiForm.elements.useGemini.value = db.gemini?.useGemini || 'yes';
+  }
   applyMode();
 }
 
@@ -551,6 +559,37 @@ function suggestMeal(craving, preference) {
   return idea;
 }
 
+function renderMealIdea(idea, source = 'Built-in fallback') {
+  $('#mealIdeaResult').innerHTML = `<b>${esc(idea.title)}</b><p>${esc(idea.swap)}</p><b>Ingredients</b><ul>${idea.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul><b>Recipe</b><ol>${idea.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol><small>${esc(source)}</small>`;
+}
+
+function geminiPrompt(craving, preference) {
+  return `You are helping a GLP-1 user choose a practical food swap. Do not give medical advice. Suggest one healthier alternative and a simple recipe. The user wants: ${craving}. Preference: ${preference}. Make it realistic, satisfying, higher protein where suitable, gentle on nausea/reflux where suitable, and avoid moralising language. Return compact JSON only with keys: title, swap, ingredients (array of 5-8 strings), steps (array of 4-6 strings), note.`;
+}
+
+async function generateGeminiMeal(craving, preference) {
+  if (!db.gemini?.apiKey || db.gemini.useGemini === 'no') throw new Error('Gemini not configured');
+  const model = db.gemini.model || 'gemini-2.5-flash';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(db.gemini.apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: geminiPrompt(craving, preference) }] }],
+      generationConfig: { temperature: 0.75, responseMimeType: 'application/json' }
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Gemini API ${res.status}: ${text.slice(0, 160)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+  if (!text) throw new Error('Gemini returned no text');
+  const parsed = JSON.parse(text);
+  if (!parsed.title || !parsed.ingredients || !parsed.steps) throw new Error('Gemini response was incomplete');
+  return { title: parsed.title, swap: parsed.swap || parsed.note || '', ingredients: parsed.ingredients, steps: parsed.steps };
+}
+
 window.del = (key, itemId) => {
   db[key] = db[key].filter(x => x.id !== itemId);
   feedback('save');
@@ -661,10 +700,50 @@ $('#trendThresholdControl').addEventListener('change', e => {
 
 $('#mealIdeaForm').addEventListener('submit', e => {
   e.preventDefault();
+  makeMealIdea(formObj(e.target));
+});
+
+async function makeMealIdea(data) {
+  db.lastMealRequest = data;
+  $('#mealIdeaResult').textContent = 'Building suggestion...';
+  try {
+    const idea = await generateGeminiMeal(data.craving, data.preference);
+    db.foodIdeas.push({ ...data, ...idea, id: id(), date: today(), source: 'Gemini' });
+    renderMealIdea(idea, `Gemini ${db.gemini.model}`);
+    $('#geminiStatus').textContent = 'Gemini generated the latest suggestion.';
+  } catch (err) {
+    const idea = suggestMeal(data.craving, data.preference);
+    db.foodIdeas.push({ ...data, ...idea, id: id(), date: today(), source: 'Built-in fallback', fallbackReason: String(err.message || err) });
+    renderMealIdea(idea, `Built-in fallback: ${String(err.message || err).slice(0, 90)}`);
+    $('#geminiStatus').textContent = 'Used built-in fallback. Gemini may be missing, over quota, blocked by billing, or unavailable.';
+  }
+  feedback('save');
+  save();
+}
+
+$('#regenerateMeal').addEventListener('click', () => {
+  const formData = formObj($('#mealIdeaForm'));
+  const data = formData.craving ? formData : db.lastMealRequest;
+  if (!data?.craving) {
+    $('#mealIdeaResult').textContent = 'Enter a craving first.';
+    return;
+  }
+  makeMealIdea(data);
+});
+
+$('#geminiForm').addEventListener('submit', e => {
+  e.preventDefault();
   const data = formObj(e.target);
-  const idea = suggestMeal(data.craving, data.preference);
-  db.foodIdeas.push({ ...data, ...idea, id: id(), date: today() });
-  $('#mealIdeaResult').innerHTML = `<b>${esc(idea.title)}</b><p>${esc(idea.swap)}</p><b>Ingredients</b><ul>${idea.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul><b>Recipe</b><ol>${idea.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`;
+  db.gemini = { apiKey: data.geminiApiKey, model: data.geminiModel, useGemini: data.useGemini };
+  $('#geminiStatus').textContent = data.geminiApiKey ? 'Gemini settings saved in this browser.' : 'No Gemini key saved. Built-in fallback will be used.';
+  feedback('save');
+  save();
+});
+
+$('#clearGeminiKey').addEventListener('click', () => {
+  db.gemini = { ...db.gemini, apiKey: '' };
+  hydrateSettings();
+  $('#geminiStatus').textContent = 'Gemini key cleared. Built-in fallback will be used.';
   feedback('save');
   save();
 });

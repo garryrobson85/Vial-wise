@@ -22,6 +22,7 @@ Private GLP-1 and peptide tracking companion for local-first dose logs, costs, r
 - Food and symptom correlation hints
 - Trends tab with user-controlled match threshold for food/drink links to symptoms and digestion changes
 - Healthy swap builder with simple recipe suggestions
+- Optional bring-your-own Gemini API key for AI food swaps, with automatic built-in fallback
 - Other peptide tracker for user-entered records
 - Peptide symptom log with repeated co-use pattern notes
 - Optional click/save sounds and mobile vibration feedback
