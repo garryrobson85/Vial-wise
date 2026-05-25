@@ -45,13 +45,16 @@ const defaults = {
     doseUnit: 'mg',
     penCost: '',
     penDoses: '',
-    feedback: 'on'
+    feedback: 'on',
+    trendThreshold: '3',
+    enabledSites: ['Left abdomen', 'Right abdomen', 'Left thigh', 'Right thigh']
   },
   vials: [],
   schedule: [],
   weights: [],
   foods: [],
   symptoms: [],
+  digestion: [],
   logs: [],
   doseHistory: [],
   peptides: [],
@@ -68,6 +71,7 @@ function loadDb() {
     ...loaded,
     settings: { ...defaults.settings, ...(loaded.settings || {}) },
     symptoms: loaded.symptoms || [],
+    digestion: loaded.digestion || [],
     doseHistory: loaded.doseHistory || [],
     peptides: loaded.peptides || loaded.compounds || [],
     peptideSymptoms: loaded.peptideSymptoms || [],
@@ -161,7 +165,7 @@ function hydrateSettings() {
 }
 
 function setTodayDefaults() {
-  ['scheduleForm', 'weightForm', 'foodForm', 'symptomForm', 'logForm', 'doseHistoryForm', 'peptideSymptomForm'].forEach(formId => {
+  ['scheduleForm', 'weightForm', 'foodForm', 'symptomForm', 'digestionForm', 'logForm', 'doseHistoryForm', 'peptideSymptomForm'].forEach(formId => {
     const input = $(`#${formId} input[name="date"]`);
     if (input && !input.value) input.value = today();
   });
@@ -305,6 +309,11 @@ function normaliseSite(site) {
   return siteAliases[cleaned] || siteOrder.find(s => s.toLowerCase() === cleaned) || String(site || '').trim();
 }
 
+function enabledSites() {
+  const sites = db.settings.enabledSites || defaults.settings.enabledSites;
+  return sites.map(normaliseSite).filter(site => siteOrder.includes(site));
+}
+
 function eightWeekInjections() {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 56);
@@ -316,9 +325,11 @@ function eightWeekInjections() {
 
 function nextSiteSuggestion() {
   const last = latestTakenSite();
+  const rotation = enabledSites();
+  if (!rotation.length) return 'Choose at least one site to include in rotation.';
   if (!last) return 'Start with a site and rotate from there.';
-  const index = siteOrder.indexOf(last);
-  return index >= 0 ? `Last used: ${last}. Consider ${siteOrder[(index + 1) % siteOrder.length]} next.` : `Last used: ${last}. Choose a different site next.`;
+  const index = rotation.indexOf(last);
+  return index >= 0 ? `Last used: ${last}. Consider ${rotation[(index + 1) % rotation.length]} next.` : `Last used: ${last}. Choose a site from your selected rotation next.`;
 }
 
 function prefillVial() {
@@ -351,6 +362,20 @@ function renderToday(spend, value, doses, cost) {
   ].map(item => `<div class="prompt"><b>+</b><span>${esc(item)}</span></div>`).join('');
   $('#costSnapshot').innerHTML = cost ? `<b>${money(cost)}</b> estimated per injection<br><b>${money(cost * 4.33)}</b> estimated monthly if weekly<br><b>${doses}</b> estimated doses left<br><b>${money(value)}</b> remaining value from ${money(spend)} spend` : (isPenMode() ? 'Add pen cost and doses per pen in Setup.' : 'Add a vial or pen to calculate cost per injection.');
   $('#todayInsights').innerHTML = insights();
+  renderChecklist();
+}
+
+function renderChecklist() {
+  const items = [
+    ['Choose tracking mode', !!db.settings.mode],
+    ['Set current GLP-1 and dose', !!currentDose().amount],
+    [isPenMode() ? 'Add pen cost and doses' : 'Add vial inventory', isPenMode() ? !!(num(db.settings.penCost) && num(db.settings.penDoses)) : db.vials.length > 0],
+    ['Create a schedule entry', db.schedule.length > 0],
+    ['Pick injection sites', enabledSites().length > 0],
+    ['Export a backup', !!db.lastBackupTest]
+  ];
+  const done = items.filter(([, ok]) => ok).length;
+  $('#onboardingChecklist').innerHTML = `<div class="check-head"><b>Setup checklist</b><span>${done}/${items.length}</span></div><div class="check-grid">${items.map(([label, ok]) => `<span class="${ok ? 'done' : ''}">${ok ? '✓' : '○'} ${esc(label)}</span>`).join('')}</div>`;
 }
 
 function render() {
@@ -367,28 +392,41 @@ function render() {
 
   $('#scheduleVial').innerHTML = `<option value="current-glp1">Current GLP-1: ${esc(glpName())} ${esc(doseText())}${isPenMode() ? ' pen' : ''}</option>` + (isPenMode() ? '' : '<option value="">Choose saved vial / pen</option>' + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join(''));
   if ($('#schedule')?.classList.contains('active')) prefillSchedule();
-  $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><button onclick="del('vials','${v.id}')">Delete</button></div><div><span class="pill">${itemQuantity(v)} item${itemQuantity(v) === 1 ? '' : 's'}</span><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)} total</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.amount ?? v.amountMg ?? 0)} ${esc(v.amountUnit || 'mg')} each | total ${cleanNumber(totalInventoryMcg(v) / 1000)} mg | remaining ${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
-  $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><button onclick="del('schedule','${s.id}')">Delete</button></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>${s.repeatLabel ? esc(s.repeatLabel) + ' | ' : ''}Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
+  $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><div class="item-actions"><button onclick="editItem('vials','${v.id}')">Edit</button><button onclick="del('vials','${v.id}')">Delete</button></div></div><div><span class="pill">${itemQuantity(v)} item${itemQuantity(v) === 1 ? '' : 's'}</span><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)} total</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.amount ?? v.amountMg ?? 0)} ${esc(v.amountUnit || 'mg')} each | total ${cleanNumber(totalInventoryMcg(v) / 1000)} mg | remaining ${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
+  $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><div class="item-actions"><button onclick="markSchedule('${s.id}','Taken')">Taken</button><button onclick="editItem('schedule','${s.id}')">Edit</button><button onclick="del('schedule','${s.id}')">Delete</button></div></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>${s.repeatLabel ? esc(s.repeatLabel) + ' | ' : ''}Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
   $('#siteSummary').textContent = nextSiteSuggestion();
   renderSiteHistory();
-  $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
-  $('#foodList').innerHTML = [...db.foods].sort((a, b) => b.date.localeCompare(a.date)).map(f => `<article class="item"><b>${esc(f.date)}: ${esc(f.meal)}</b><small>${esc(f.portion)} portion | fatty ${esc(f.fatty)} | spicy ${esc(f.spicy)} | caffeine ${esc(f.caffeine)}</small><p>${esc(f.notes || '')}</p></article>`).join('') || '<div class="empty">No food entries.</div>';
-  $('#symptomList').innerHTML = [...db.symptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(s => `<article class="item"><b>${esc(s.date)} ${esc(s.time || '')}: ${esc(s.symptom)}</b><span>Severity ${esc(s.severity || 0)}/10 | possible trigger: ${esc(s.trigger || '-')}</span><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No symptom entries.</div>';
-  $('#logList').innerHTML = [...db.logs].sort((a, b) => b.date.localeCompare(a.date)).map(l => `<article class="item"><b>${esc(l.date)}</b><span>Appetite ${esc(l.appetite || '-')} | nausea ${esc(l.nausea || '-')} | energy ${esc(l.energy || '-')} | mood ${esc(l.mood || '-')} | ${esc(l.digestion || '-')}</span><p>${esc(l.notes || '')}</p></article>`).join('') || '<div class="empty">No daily logs.</div>';
-  $('#doseHistoryList').innerHTML = [...db.doseHistory].sort((a, b) => b.date.localeCompare(a.date)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)}: ${esc(glpName(d.glp1))} ${esc(doseText(d.amount, d.unit))}</b><button onclick="del('doseHistory','${d.id}')">Delete</button></div><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No dose journey points yet.</div>';
-  $('#peptideList').innerHTML = db.peptides.map(p => `<article class="item"><div class="item-head"><b>${esc(p.name)}</b><button onclick="del('peptides','${p.id}')">Delete</button></div><div><span class="pill">${esc(p.category || 'User-entered')}</span><span class="pill">${esc(doseText(p.amount, p.unit))}</span><span class="pill">${esc(p.frequency || 'No frequency')}</span></div><small>Start ${esc(p.startDate || '-')} | source ${esc(p.source || '-')} | storage ${esc(p.storage || '-')}</small><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No other peptides tracked.</div>';
-  $('#peptideSymptomList').innerHTML = [...db.peptideSymptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(p => `<article class="item"><div class="item-head"><b>${esc(p.date)} ${esc(p.time || '')}: ${esc(p.symptom)}</b><button onclick="del('peptideSymptoms','${p.id}')">Delete</button></div><span>${esc(p.peptides || 'No peptide named')} | severity ${esc(p.severity || 0)}/10 | ${esc(p.timing || 'Timing not set')}</span><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No peptide symptom logs yet.</div>';
+  $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><div class="item-head"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><button onclick="editItem('weights','${w.id}')">Edit</button></div><span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
+  $('#foodList').innerHTML = [...db.foods].sort((a, b) => b.date.localeCompare(a.date)).map(f => `<article class="item"><div class="item-head"><b>${esc(f.date)}: ${esc(f.meal)}</b><button onclick="editItem('foods','${f.id}')">Edit</button></div><small>${esc(f.portion)} portion | fatty ${esc(f.fatty)} | spicy ${esc(f.spicy)} | caffeine ${esc(f.caffeine)}</small><p>${esc(f.notes || '')}</p></article>`).join('') || '<div class="empty">No food entries.</div>';
+  $('#symptomList').innerHTML = [...db.symptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(s.date)} ${esc(s.time || '')}: ${esc(s.symptom)}</b><button onclick="editItem('symptoms','${s.id}')">Edit</button></div><span>Severity ${esc(s.severity || 0)}/10 | possible trigger: ${esc(s.trigger || '-')}</span><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No symptom entries.</div>';
+  $('#digestionList').innerHTML = [...db.digestion].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)} ${esc(d.time || '')}: ${esc(d.movement)}</b><button onclick="editItem('digestion','${d.id}')">Edit</button></div><span>Frequency ${esc(d.frequency || 0)} | ${esc(d.bristol || 'Bristol not set')} | discomfort ${esc(d.discomfort || 0)}/10</span><small>Hydration ${esc(d.hydration || '-')} | trigger ${esc(d.trigger || '-')}</small><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No digestion entries.</div>';
+  $('#logList').innerHTML = [...db.logs].sort((a, b) => b.date.localeCompare(a.date)).map(l => `<article class="item"><div class="item-head"><b>${esc(l.date)}</b><button onclick="editItem('logs','${l.id}')">Edit</button></div><span>Appetite ${esc(l.appetite || '-')} | nausea ${esc(l.nausea || '-')} | energy ${esc(l.energy || '-')} | mood ${esc(l.mood || '-')} | ${esc(l.digestion || '-')}</span><p>${esc(l.notes || '')}</p></article>`).join('') || '<div class="empty">No daily logs.</div>';
+  $('#doseHistoryList').innerHTML = [...db.doseHistory].sort((a, b) => b.date.localeCompare(a.date)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)}: ${esc(glpName(d.glp1))} ${esc(doseText(d.amount, d.unit))}</b><div class="item-actions"><button onclick="editItem('doseHistory','${d.id}')">Edit</button><button onclick="del('doseHistory','${d.id}')">Delete</button></div></div><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No dose journey points yet.</div>';
+  $('#peptideList').innerHTML = db.peptides.map(p => `<article class="item"><div class="item-head"><b>${esc(p.name)}</b><div class="item-actions"><button onclick="editItem('peptides','${p.id}')">Edit</button><button onclick="del('peptides','${p.id}')">Delete</button></div></div><div><span class="pill">${esc(p.category || 'User-entered')}</span><span class="pill">${esc(doseText(p.amount, p.unit))}</span><span class="pill">${esc(p.frequency || 'No frequency')}</span></div><small>Start ${esc(p.startDate || '-')} | source ${esc(p.source || '-')} | storage ${esc(p.storage || '-')}</small><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No other peptides tracked.</div>';
+  $('#peptideSymptomList').innerHTML = [...db.peptideSymptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(p => `<article class="item"><div class="item-head"><b>${esc(p.date)} ${esc(p.time || '')}: ${esc(p.symptom)}</b><div class="item-actions"><button onclick="editItem('peptideSymptoms','${p.id}')">Edit</button><button onclick="del('peptideSymptoms','${p.id}')">Delete</button></div></div><span>${esc(p.peptides || 'No peptide named')} | severity ${esc(p.severity || 0)}/10 | ${esc(p.timing || 'Timing not set')}</span><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No peptide symptom logs yet.</div>';
   $('#peptideInsights').innerHTML = peptideInsights();
   $('#foodInsights').innerHTML = insights();
+  renderTrends();
 }
 
 function markerId(site) {
-  return 'mark' + site.replace(/\s+/g, '');
+  return {
+    'Left abdomen': 'markLeftAbdomen',
+    'Right abdomen': 'markRightAbdomen',
+    'Left thigh': 'markLeftThigh',
+    'Right thigh': 'markRightThigh',
+    'Left upper arm': 'markLeftUpperArm',
+    'Right upper arm': 'markRightUpperArm'
+  }[site];
 }
 
 function renderSiteHistory() {
   const recent = eightWeekInjections();
   const bySite = Object.fromEntries(siteOrder.map(site => [site, []]));
+  const selected = enabledSites();
+  $$('#sitePicker input[type="checkbox"]').forEach(input => {
+    input.checked = selected.includes(input.value);
+  });
   recent.forEach(entry => {
     const site = normaliseSite(entry.site);
     if (bySite[site]) bySite[site].push({ ...entry, site });
@@ -396,12 +434,16 @@ function renderSiteHistory() {
   siteOrder.forEach(site => {
     const marker = $('#' + markerId(site));
     const button = $(`.site-marker[data-site="${site}"]`);
+    const quickButton = $(`.body-map button[data-site="${site}"]`);
     const latest = bySite[site][0];
     if (marker) marker.textContent = bySite[site].length;
     if (button) {
       button.classList.toggle('has-history', bySite[site].length > 0);
+      button.classList.toggle('disabled-site', !selected.includes(site));
+      button.style.setProperty('--site-heat', Math.min(1, bySite[site].length / 4));
       button.title = latest ? `${site}: ${vialName(latest.vialId)} ${latest.amount || latest.amountMcg || '-'} ${latest.amountUnit || (latest.amountMcg ? 'mcg' : 'mg')} on ${latest.date}` : site;
     }
+    if (quickButton) quickButton.classList.toggle('disabled-site', !selected.includes(site));
   });
   $('#siteHistory').innerHTML = recent.length ? recent.map(s => `<article class="item"><div class="item-head"><b>${esc(normaliseSite(s.site))}</b><span class="pill">${esc(s.date)} ${esc(s.time || '')}</span></div><span>${esc(vialName(s.vialId))} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))}</span><small>${esc(s.notes || '')}</small></article>`).join('') : '<div class="empty">No taken injections in the last 8 weeks.</div>';
 }
@@ -438,6 +480,57 @@ function peptideInsights() {
   return rows.map(x => `<div class="item"><b>${esc(x.name)}</b><span>${x.total} symptom log${x.total === 1 ? '' : 's'}; ${x.high} higher-severity entry${x.high === 1 ? '' : 'ies'}.</span><small>Pattern spotting only: this is not proof of an interaction.</small></div>`).join('');
 }
 
+function foodMarkers(food) {
+  const markers = [];
+  if (food.fatty === 'Yes') markers.push('fatty meals');
+  if (food.spicy === 'Yes') markers.push('spicy food');
+  if (food.caffeine === 'Yes') markers.push('caffeine');
+  const meal = String(food.meal || '').toLowerCase();
+  ['coffee', 'alcohol', 'bread', 'pasta', 'rice', 'pizza', 'chocolate', 'dairy', 'milk', 'cheese', 'fried', 'takeaway'].forEach(word => {
+    if (meal.includes(word)) markers.push(word);
+  });
+  return [...new Set(markers)];
+}
+
+function trendStrength(count, threshold) {
+  if (count >= Math.max(5, threshold + 2)) return 'Strong pattern';
+  if (count >= Math.max(3, threshold)) return 'Likely pattern';
+  return 'Possible pattern';
+}
+
+function buildTrendRows(targets, targetLabel) {
+  const threshold = num(db.settings.trendThreshold) || 3;
+  const counts = {};
+  targets.forEach(target => {
+    const sameDayFoods = db.foods.filter(food => food.date === target.date);
+    sameDayFoods.forEach(food => {
+      foodMarkers(food).forEach(marker => {
+        const key = `${marker}::${targetLabel(target)}`;
+        counts[key] ||= { marker, outcome: targetLabel(target), count: 0, dates: new Set() };
+        if (!counts[key].dates.has(target.date)) {
+          counts[key].count++;
+          counts[key].dates.add(target.date);
+        }
+      });
+    });
+  });
+  return Object.values(counts).filter(row => row.count >= threshold).sort((a, b) => b.count - a.count);
+}
+
+function renderTrendList(rows, emptyText) {
+  const threshold = num(db.settings.trendThreshold) || 3;
+  return rows.length ? rows.map(row => `<div class="item"><div class="item-head"><b>${esc(trendStrength(row.count, threshold))}</b><span class="pill">${row.count} matches</span></div><span>${esc(row.marker)} appeared alongside ${esc(row.outcome)} on ${row.count} logged day${row.count === 1 ? '' : 's'}.</span><small>Worth watching, not proof of cause.</small></div>`).join('') : emptyText;
+}
+
+function renderTrends() {
+  const thresholdControl = $('#trendThresholdControl');
+  if (thresholdControl) thresholdControl.value = db.settings.trendThreshold || '3';
+  const symptomTargets = db.symptoms.filter(s => num(s.severity) >= 4 && s.symptom);
+  const digestionTargets = db.digestion.filter(d => d.movement && d.movement !== 'Normal');
+  $('#symptomTrendList').innerHTML = renderTrendList(buildTrendRows(symptomTargets, s => String(s.symptom || 'symptoms').toLowerCase()), `No food/symptom pattern has reached ${db.settings.trendThreshold || 3} matches yet.`);
+  $('#digestionTrendList').innerHTML = renderTrendList(buildTrendRows(digestionTargets, d => String(d.movement || 'digestion changes').toLowerCase()), `No food/digestion pattern has reached ${db.settings.trendThreshold || 3} matches yet.`);
+}
+
 function suggestMeal(craving, preference) {
   const q = craving.toLowerCase();
   let idea = {
@@ -460,6 +553,26 @@ function suggestMeal(craving, preference) {
 
 window.del = (key, itemId) => {
   db[key] = db[key].filter(x => x.id !== itemId);
+  feedback('save');
+  save();
+};
+
+window.markSchedule = (itemId, status) => {
+  const item = db.schedule.find(x => x.id === itemId);
+  if (!item) return;
+  item.status = status;
+  if (!item.time) item.time = new Date().toTimeString().slice(0, 5);
+  feedback('save');
+  save();
+};
+
+window.editItem = (key, itemId) => {
+  const item = db[key]?.find(x => x.id === itemId);
+  if (!item) return;
+  const notes = prompt('Edit notes', item.notes || '');
+  if (notes === null) return;
+  item.notes = notes;
+  feedback('save');
   save();
 };
 
@@ -533,10 +646,18 @@ $('#scheduleForm').addEventListener('submit', e => {
 bindForm('weightForm', 'weights');
 bindForm('foodForm', 'foods');
 bindForm('symptomForm', 'symptoms');
+bindForm('digestionForm', 'digestion');
 bindForm('logForm', 'logs');
 bindForm('doseHistoryForm', 'doseHistory');
 bindForm('peptideForm', 'peptides');
 bindForm('peptideSymptomForm', 'peptideSymptoms');
+
+$('#trendThresholdControl').addEventListener('change', e => {
+  db.settings.trendThreshold = e.target.value;
+  $('#settingsForm').elements.trendThreshold.value = e.target.value;
+  feedback('save');
+  save();
+});
 
 $('#mealIdeaForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -608,6 +729,13 @@ $$('.body-map button, .site-marker').forEach(b => b.addEventListener('click', ()
   $('#siteInput').value = b.dataset.site;
 }));
 
+$('#sitePicker').addEventListener('change', e => {
+  if (!e.target.matches('input[type="checkbox"]')) return;
+  db.settings.enabledSites = $$('#sitePicker input[type="checkbox"]:checked').map(input => input.value);
+  feedback('save');
+  save();
+});
+
 function csvCell(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
@@ -621,6 +749,19 @@ function download(name, text, type = 'application/json') {
 }
 
 $('#exportJson').addEventListener('click', () => download('vialwise-backup.json', JSON.stringify(db, null, 2)));
+$('#testBackup').addEventListener('click', () => {
+  try {
+    const copy = JSON.parse(JSON.stringify(db));
+    const required = ['settings', 'schedule', 'foods', 'symptoms', 'logs', 'vials', 'peptides'];
+    const missing = required.filter(key => !(key in copy));
+    db.lastBackupTest = new Date().toISOString();
+    $('#backupHealth').innerHTML = missing.length ? `Backup structure warning: missing ${missing.map(esc).join(', ')}.` : `Backup health looks good. Last checked ${new Date(db.lastBackupTest).toLocaleString()}.`;
+    feedback('save');
+    save();
+  } catch {
+    $('#backupHealth').textContent = 'Backup health test failed.';
+  }
+});
 $('#exportCsv').addEventListener('click', () => {
   const rows = ['section,date,name,amount,cost,notes'];
   db.vials.forEach(v => rows.push(['vial', '', v.name, `${itemQuantity(v)} x ${v.amount || v.amountMg || ''}${v.amountUnit || 'mg'}`, v.cost || 0, v.notes || ''].map(csvCell).join(',')));
@@ -628,6 +769,7 @@ $('#exportCsv').addEventListener('click', () => {
   db.doseHistory.forEach(d => rows.push(['dose_history', d.date, glpName(d.glp1), `${d.amount}${d.unit}`, '', d.notes || ''].map(csvCell).join(',')));
   db.foods.forEach(f => rows.push(['food', f.date, f.meal, f.portion, '', f.notes || ''].map(csvCell).join(',')));
   db.symptoms.forEach(s => rows.push(['symptom', s.date, s.symptom, `severity ${s.severity || 0}`, '', s.notes || ''].map(csvCell).join(',')));
+  db.digestion.forEach(d => rows.push(['digestion', d.date, d.movement, `frequency ${d.frequency || 0}`, '', d.notes || ''].map(csvCell).join(',')));
   db.peptides.forEach(p => rows.push(['peptide', p.startDate || '', p.name, `${p.amount || ''}${p.unit || ''}`, '', p.notes || ''].map(csvCell).join(',')));
   db.peptideSymptoms.forEach(p => rows.push(['peptide_symptom', p.date, p.peptides || p.symptom, `severity ${p.severity || 0}`, '', p.notes || ''].map(csvCell).join(',')));
   db.weights.forEach(w => rows.push(['weight', w.date, 'weight', `${w.weight}${w.unit}`, '', w.notes || ''].map(csvCell).join(',')));
@@ -658,6 +800,7 @@ $('#sampleBtn').addEventListener('click', () => {
   db.doseHistory = [{ id: 'd1', date: today(), glp1: 'semaglutide', amount: '0.25', unit: 'mg', notes: 'Demo start point' }];
   db.foods = [{ id: 'f1', date: today(), meal: 'Coffee and toast', portion: 'Small', fatty: 'No', spicy: 'No', caffeine: 'Yes', notes: 'Demo food entry' }];
   db.symptoms = [{ id: 'y1', date: today(), time: '11:00', symptom: 'Mild nausea', severity: '3', trigger: 'Coffee', notes: 'Demo symptom entry' }];
+  db.digestion = [{ id: 'g1', date: today(), time: '08:00', movement: 'Normal', frequency: '1', bristol: 'Type 4 - smooth sausage', discomfort: '0', hydration: 'Normal', trigger: '', notes: 'Demo digestion entry' }];
   db.peptides = [{ id: 'p1', name: 'Example peptide', category: 'Recovery', amount: '1', unit: 'mg', frequency: 'User-entered', startDate: today(), source: 'Demo', storage: 'Label instructions', notes: 'Demo only' }];
   db.peptideSymptoms = [{ id: 'ps1', date: today(), time: '20:00', peptides: 'Example peptide', symptom: 'Sleep quality changed', severity: '2', timing: 'Same day', notes: 'Demo only' }];
   hydrateSettings();

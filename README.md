@@ -11,10 +11,16 @@ Private GLP-1 and peptide tracking companion for local-first dose logs, costs, r
 - Schedule and injection site rotation tracking
 - Daily or weekly repeat schedule generation
 - Visual body site map with last 8 weeks of taken injections
+- Selectable injection site rotation, with abdomen/thighs on by default and arms optional
+- More human-styled body map with recent-site marker intensity
+- Quick mark-as-taken and note edit actions on records
+- First-run setup checklist and backup health test
 - Vial, pen and cost-per-injection calculations
 - Peptide-neutral reconstitution calculator with mg/mcg/IU, ml/U-100 units, syringe sizing, rounding, doses per vial and draw warnings
 - Weight, food, symptom, mood and daily check-in logs
+- Digestion tracker for constipation, diarrhoea, frequency, Bristol type, hydration and discomfort
 - Food and symptom correlation hints
+- Trends tab with user-controlled match threshold for food/drink links to symptoms and digestion changes
 - Healthy swap builder with simple recipe suggestions
 - Other peptide tracker for user-entered records
 - Peptide symptom log with repeated co-use pattern notes
