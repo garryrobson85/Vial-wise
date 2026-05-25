@@ -124,6 +124,7 @@ function applyMode() {
   $('#beginnerMode').classList.toggle('active', mode === 'beginner');
   $('#advancedMode').classList.toggle('active', mode === 'advanced');
   $$('.advanced-tab').forEach(tab => tab.classList.toggle('hidden', mode !== 'advanced'));
+  $$('.advanced-metric').forEach(item => item.classList.toggle('hidden', mode !== 'advanced'));
   const active = $('.tab.active');
   if (active?.classList.contains('hidden')) switchView('today');
 }
@@ -154,13 +155,21 @@ $('#advancedMode').addEventListener('click', () => {
 });
 
 function costPerDose(v) {
-  const totalMcg = mcg(v.amount ?? v.amountMg, v.amountUnit || 'mg');
+  const totalMcg = totalInventoryMcg(v);
   const doseMcg = mcg(v.dose ?? v.doseMcg, v.doseUnit || (v.doseMcg ? 'mcg' : 'mg'));
   return totalMcg && num(v.cost) && doseMcg ? (num(v.cost) / totalMcg) * doseMcg : 0;
 }
 
+function itemQuantity(v) {
+  return Math.max(1, Math.floor(num(v.quantity) || 1));
+}
+
+function totalInventoryMcg(v) {
+  return mcg(v.amount ?? v.amountMg, v.amountUnit || 'mg') * itemQuantity(v);
+}
+
 function remainingValue(v) {
-  const totalMcg = mcg(v.amount ?? v.amountMg, v.amountUnit || 'mg');
+  const totalMcg = totalInventoryMcg(v);
   const remMcg = mcg(v.remaining ?? v.remainingMg, v.remainingUnit || 'mg');
   return totalMcg && num(v.cost) ? num(v.cost) * (remMcg / totalMcg) : 0;
 }
@@ -178,7 +187,7 @@ function vialName(i) {
 function autoCost(s) {
   const v = db.vials.find(item => item.id === s.vialId);
   if (!v) return 0;
-  const totalMcg = mcg(v.amount ?? v.amountMg, v.amountUnit || 'mg');
+  const totalMcg = totalInventoryMcg(v);
   const doseMcg = mcg(s.amount ?? s.amountMcg ?? v.dose ?? v.doseMcg, s.amountUnit || v.doseUnit || 'mg');
   return totalMcg && num(v.cost) && doseMcg ? (num(v.cost) / totalMcg) * doseMcg : 0;
 }
@@ -250,7 +259,7 @@ function render() {
   renderToday(spend, value, doses);
 
   $('#scheduleVial').innerHTML = '<option value="">Choose item</option>' + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
-  $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><button onclick="del('vials','${v.id}')">Delete</button></div><div><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)}</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} remaining | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
+  $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><button onclick="del('vials','${v.id}')">Delete</button></div><div><span class="pill">${itemQuantity(v)} item${itemQuantity(v) === 1 ? '' : 's'}</span><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)} total</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.amount ?? v.amountMg ?? 0)} ${esc(v.amountUnit || 'mg')} each | total ${cleanNumber(totalInventoryMcg(v) / 1000)} mg | remaining ${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
   $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><button onclick="del('schedule','${s.id}')">Delete</button></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
   $('#siteSummary').textContent = nextSiteSuggestion();
   $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
@@ -303,10 +312,20 @@ window.del = (key, itemId) => {
   save();
 };
 
-function bindForm(idName, collection) {
+function normaliseVialForm(data) {
+  data.quantity = String(itemQuantity(data));
+  if (!data.remaining && data.amount) {
+    const total = num(data.amount) * itemQuantity(data);
+    data.remaining = cleanNumber(total);
+    data.remainingUnit = data.amountUnit || 'mg';
+  }
+  return data;
+}
+
+function bindForm(idName, collection, normalise = data => data) {
   $(`#${idName}`).addEventListener('submit', e => {
     e.preventDefault();
-    db[collection].push({ ...formObj(e.target), id: id() });
+    db[collection].push({ ...normalise(formObj(e.target)), id: id() });
     e.target.reset();
     setTodayDefaults();
     save();
@@ -328,7 +347,7 @@ $('#settingsForm').addEventListener('submit', e => {
   render();
 });
 
-bindForm('vialForm', 'vials');
+bindForm('vialForm', 'vials', normaliseVialForm);
 bindForm('scheduleForm', 'schedule');
 bindForm('weightForm', 'weights');
 bindForm('foodForm', 'foods');
@@ -379,7 +398,7 @@ function download(name, text, type = 'application/json') {
 $('#exportJson').addEventListener('click', () => download('vialwise-backup.json', JSON.stringify(db, null, 2)));
 $('#exportCsv').addEventListener('click', () => {
   const rows = ['section,date,name,amount,cost,notes'];
-  db.vials.forEach(v => rows.push(['vial', '', v.name, `${v.amount || v.amountMg || ''}${v.amountUnit || 'mg'}`, v.cost || 0, v.notes || ''].map(csvCell).join(',')));
+  db.vials.forEach(v => rows.push(['vial', '', v.name, `${itemQuantity(v)} x ${v.amount || v.amountMg || ''}${v.amountUnit || 'mg'}`, v.cost || 0, v.notes || ''].map(csvCell).join(',')));
   db.schedule.forEach(s => rows.push(['schedule', s.date, vialName(s.vialId), `${s.amount || s.amountMcg || ''}${s.amountUnit || 'mg'}`, s.actualCost || autoCost(s), s.notes || ''].map(csvCell).join(',')));
   db.doseHistory.forEach(d => rows.push(['dose_history', d.date, glpName(d.glp1), `${d.amount}${d.unit}`, '', d.notes || ''].map(csvCell).join(',')));
   db.foods.forEach(f => rows.push(['food', f.date, f.meal, f.portion, '', f.notes || ''].map(csvCell).join(',')));
@@ -408,7 +427,7 @@ $('#importJson').addEventListener('change', async e => {
 
 $('#sampleBtn').addEventListener('click', () => {
   db.settings = { ...db.settings, mode: 'advanced', glp1: 'semaglutide', currentDose: '0.25', customDose: '', doseUnit: 'mg' };
-  db.vials = [{ id: 'v1', name: 'Semaglutide vial', type: 'GLP-1', amount: '10', amountUnit: 'mg', water: '2', waterUnit: 'ml', remaining: '8.5', remainingUnit: 'mg', dose: '0.25', doseUnit: 'mg', cost: '85', batch: 'Demo', expiry: '2026-12-01', notes: 'Demo only' }];
+  db.vials = [{ id: 'v1', name: 'Semaglutide 5mg vials', type: 'GLP-1', quantity: '2', amount: '5', amountUnit: 'mg', water: '10', waterUnit: 'units', remaining: '8.5', remainingUnit: 'mg', dose: '0.25', doseUnit: 'mg', cost: '85', batch: 'Demo', expiry: '2026-12-01', notes: 'Demo: 2 x 5mg vials' }];
   db.schedule = [{ id: 's1', vialId: 'v1', date: today(), time: '09:00', amount: '0.25', amountUnit: 'mg', site: 'Left abdomen', status: 'Planned', notes: 'Demo entry' }];
   db.doseHistory = [{ id: 'd1', date: today(), glp1: 'semaglutide', amount: '0.25', unit: 'mg', notes: 'Demo start point' }];
   db.foods = [{ id: 'f1', date: today(), meal: 'Coffee and toast', portion: 'Small', fatty: 'No', spicy: 'No', caffeine: 'Yes', notes: 'Demo food entry' }];
