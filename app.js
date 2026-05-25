@@ -66,6 +66,11 @@ function mcg(amount, unit) {
   return num(amount) * (unit === 'mg' ? 1000 : 1);
 }
 
+function baseAmount(amount, unit) {
+  if (unit === 'iu') return { value: num(amount), family: 'iu', label: 'IU' };
+  return { value: mcg(amount, unit), family: 'mass', label: 'mcg' };
+}
+
 function ml(amount, unit) {
   return num(amount) / (unit === 'units' ? 100 : 1);
 }
@@ -181,10 +186,12 @@ function dosesLeft(v) {
 }
 
 function vialName(i) {
+  if (i === 'current-glp1') return `${glpName()} (${doseText()})`;
   return db.vials.find(v => v.id === i)?.name || 'Unassigned';
 }
 
 function autoCost(s) {
+  if (s.vialId === 'current-glp1') return 0;
   const v = db.vials.find(item => item.id === s.vialId);
   if (!v) return 0;
   const totalMcg = totalInventoryMcg(v);
@@ -267,7 +274,8 @@ function render() {
   $('#statFood').textContent = db.foods.length;
   renderToday(spend, value, doses);
 
-  $('#scheduleVial').innerHTML = '<option value="">Choose item</option>' + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+  $('#scheduleVial').innerHTML = `<option value="current-glp1">Current GLP-1: ${esc(glpName())} ${esc(doseText())}</option><option value="">Choose saved vial / pen</option>` + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+  if ($('#schedule')?.classList.contains('active')) prefillSchedule();
   $('#vialList').innerHTML = db.vials.map(v => `<article class="item"><div class="item-head"><b>${esc(v.name)}</b><button onclick="del('vials','${v.id}')">Delete</button></div><div><span class="pill">${itemQuantity(v)} item${itemQuantity(v) === 1 ? '' : 's'}</span><span class="pill">${esc(v.type || 'Item')}</span><span class="pill">${money(v.cost)} total</span><span class="pill">${dosesLeft(v)} doses left</span><span class="pill">${money(costPerDose(v))}/injection</span></div><small>${esc(v.amount ?? v.amountMg ?? 0)} ${esc(v.amountUnit || 'mg')} each | total ${cleanNumber(totalInventoryMcg(v) / 1000)} mg | remaining ${esc(v.remaining ?? v.remainingMg ?? 0)} ${esc(v.remainingUnit || 'mg')} | value ${money(remainingValue(v))} | batch ${esc(v.batch || '-')} | expiry ${esc(v.expiry || '-')}</small><p>${esc(v.notes || '')}</p></article>`).join('') || '<div class="empty">No vials/items yet.</div>';
   $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><button onclick="del('schedule','${s.id}')">Delete</button></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
   $('#siteSummary').textContent = nextSiteSuggestion();
@@ -398,17 +406,59 @@ $('#mealIdeaForm').addEventListener('submit', e => {
   save();
 });
 
+function formatBase(value, family) {
+  if (family === 'iu') return `${cleanNumber(value)} IU`;
+  return value >= 1000 ? `${cleanNumber(value / 1000)} mg` : `${cleanNumber(value)} mcg`;
+}
+
+function setSyringeVisual(units, syringeUnits) {
+  const pct = Math.max(0, Math.min(100, (units / syringeUnits) * 100));
+  $('#syringeVisual .syringe-fill').style.width = pct + '%';
+  $('#syringeVisual span').textContent = `${cleanNumber(units)} / ${syringeUnits} units`;
+}
+
+$$('.quick-row button[data-water]').forEach(btn => btn.addEventListener('click', () => {
+  $('#calcWater').value = btn.dataset.water;
+  $('#calcWaterUnit').value = 'ml';
+}));
+
 $('#calcBtn').addEventListener('click', () => {
-  const totalMcg = mcg($('#calcAmount').value, $('#calcAmountUnit').value);
+  const vial = baseAmount($('#calcAmount').value, $('#calcAmountUnit').value);
+  const dose = baseAmount($('#calcDose').value, $('#calcDoseUnit').value);
   const waterMl = ml($('#calcWater').value, $('#calcWaterUnit').value);
-  const doseMcg = mcg($('#calcDose').value, $('#calcDoseUnit').value);
-  if (!totalMcg || !waterMl || !doseMcg) {
+  const syringeUnits = num($('#calcSyringe').value) || 100;
+  const rounding = num($('#calcRounding').value) || 0.1;
+  if (!vial.value || !waterMl || !dose.value) {
     $('#calcResult').textContent = 'Enter all three values.';
+    setSyringeVisual(0, syringeUnits);
     return;
   }
-  const concMcgMl = totalMcg / waterMl;
-  const doseMl = doseMcg / concMcgMl;
-  $('#calcResult').innerHTML = `<b>Concentration:</b> ${concMcgMl.toFixed(2)} mcg/ml<br><b>Volume to measure:</b> ${doseMl.toFixed(4)} ml<br><b>U-100 syringe:</b> ${(doseMl * 100).toFixed(1)} units`;
+  if (vial.family !== dose.family) {
+    $('#calcResult').innerHTML = 'Vial amount and desired dose must use compatible units. Use mg/mcg together, or IU/IU together.';
+    setSyringeVisual(0, syringeUnits);
+    return;
+  }
+  const concentrationPerMl = vial.value / waterMl;
+  const perUnit = concentrationPerMl / 100;
+  const doseMl = dose.value / concentrationPerMl;
+  const rawUnits = doseMl * 100;
+  const roundedUnits = Math.round(rawUnits / rounding) * rounding;
+  const roundedDose = roundedUnits * perUnit;
+  const doseDiff = dose.value ? ((roundedDose - dose.value) / dose.value) * 100 : 0;
+  const dosesPerVial = vial.value / dose.value;
+  const fits = rawUnits <= syringeUnits;
+  const label = vial.family === 'iu' ? 'IU' : 'mcg';
+  const concentrationLine = vial.family === 'iu'
+    ? `${cleanNumber(concentrationPerMl)} IU/ml`
+    : `${cleanNumber(concentrationPerMl / 1000)} mg/ml (${cleanNumber(concentrationPerMl)} mcg/ml)`;
+  const notes = [
+    fits ? `Fits selected syringe (${syringeUnits} units).` : `Draw is larger than the selected ${syringeUnits}-unit syringe.`,
+    Math.abs(doseDiff) > 2 ? `Rounded draw changes the dose by ${doseDiff.toFixed(1)}%. Consider a different water amount or rounding precision.` : 'Rounded draw is close to the requested dose.',
+    rawUnits < 2 ? 'Very small draw volume: measurement may be hard to read on many syringes.' : '',
+    rawUnits > 80 && syringeUnits === 100 ? 'Large draw volume: some users prefer a stronger concentration if appropriate for their setup.' : ''
+  ].filter(Boolean);
+  $('#calcResult').innerHTML = `<div class="result-grid"><div><span>Concentration</span><b>${concentrationLine}</b></div><div><span>Per U-100 unit</span><b>${cleanNumber(perUnit)} ${label}</b></div><div><span>Draw volume</span><b>${doseMl.toFixed(4)} ml</b></div><div><span>Syringe draw</span><b>${cleanNumber(rawUnits)} units</b></div><div><span>Rounded draw</span><b>${cleanNumber(roundedUnits)} units</b></div><div><span>Rounded amount</span><b>${formatBase(roundedDose, vial.family)}</b></div><div><span>Doses per vial</span><b>${cleanNumber(dosesPerVial)}</b></div><div><span>Remaining after one dose</span><b>${formatBase(vial.value - dose.value, vial.family)}</b></div></div><div class="calc-notes">${notes.map(n => `<p>${esc(n)}</p>`).join('')}</div>`;
+  setSyringeVisual(rawUnits, syringeUnits);
 });
 
 $$('.body-map button, .site-marker').forEach(b => b.addEventListener('click', () => {
