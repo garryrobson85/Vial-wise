@@ -1,26 +1,28 @@
 # VialWise
 
-GLP-1-first tracking companion with optional vial, reconstitution, inventory, food/symptom and additional compound tracking.
+Private GLP-1 and peptide tracking companion for local-first dose logs, costs, reconstitution arithmetic, food patterns, symptoms, mood and backups.
+
+## What is included
+
+- Beginner / Advanced mode navigation
+- GLP-1 onboarding for Semaglutide, Tirzepatide and Retatrutide
+- Dose journey timeline
+- Schedule and injection site rotation tracking
+- Vial, pen and cost-per-injection calculations
+- Reconstitution calculator with mg/mcg and ml/U-100 units
+- Weight, food, symptom, mood and daily check-in logs
+- Food and symptom correlation hints
+- Healthy swap builder with simple recipe suggestions
+- Other peptide tracker for user-entered records
+- JSON backup, JSON restore and CSV summary export
 
 ## Deploy on GitHub Pages
-1. Upload these files to a GitHub repo.
-2. Go to Settings → Pages.
-3. Deploy from main branch root.
+
+1. Upload `index.html`, `style.css`, `app.js` and this `README.md` to the root of a GitHub repo.
+2. Go to Settings > Pages.
+3. Deploy from the main branch root.
 4. Open the GitHub Pages URL.
 
-## App-store ready direction
-This static version is deliberately modular:
-- `index.html` = screens/views
-- `style.css` = design system
-- `app.js` = local data models and logic
-
-Future mobile conversion can map the same data models to:
-- SQLite/secure storage
-- cloud sync
-- push notifications
-- Apple Health / Google Fit
-- user accounts
-- encrypted backup
-
 ## Safety
-VialWise does not recommend doses, compounds or treatment. It stores user-entered information and performs arithmetic calculations only.
+
+VialWise stores user-entered information and performs arithmetic calculations only. It does not recommend doses, compounds, peptides, foods or treatment.
