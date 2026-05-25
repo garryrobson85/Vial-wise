@@ -10,6 +10,28 @@ const glp1Options = {
 };
 
 const siteOrder = ['Left abdomen', 'Right abdomen', 'Left thigh', 'Right thigh', 'Left upper arm', 'Right upper arm'];
+const siteAliases = {
+  'left abdomen': 'Left abdomen',
+  'l abdomen': 'Left abdomen',
+  'left stomach': 'Left abdomen',
+  'l stomach': 'Left abdomen',
+  'right abdomen': 'Right abdomen',
+  'r abdomen': 'Right abdomen',
+  'right stomach': 'Right abdomen',
+  'r stomach': 'Right abdomen',
+  'left thigh': 'Left thigh',
+  'l thigh': 'Left thigh',
+  'right thigh': 'Right thigh',
+  'r thigh': 'Right thigh',
+  'left upper arm': 'Left upper arm',
+  'left arm': 'Left upper arm',
+  'l upper arm': 'Left upper arm',
+  'l arm': 'Left upper arm',
+  'right upper arm': 'Right upper arm',
+  'right arm': 'Right upper arm',
+  'r upper arm': 'Right upper arm',
+  'r arm': 'Right upper arm'
+};
 
 const defaults = {
   settings: {
@@ -273,7 +295,14 @@ function nextSchedule() {
 function latestTakenSite() {
   return [...db.schedule]
     .filter(s => s.site && s.status === 'Taken')
-    .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')))[0]?.site || '';
+    .sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')))
+    .map(s => normaliseSite(s.site))
+    .find(Boolean) || '';
+}
+
+function normaliseSite(site) {
+  const cleaned = String(site || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return siteAliases[cleaned] || siteOrder.find(s => s.toLowerCase() === cleaned) || String(site || '').trim();
 }
 
 function eightWeekInjections() {
@@ -361,7 +390,8 @@ function renderSiteHistory() {
   const recent = eightWeekInjections();
   const bySite = Object.fromEntries(siteOrder.map(site => [site, []]));
   recent.forEach(entry => {
-    if (bySite[entry.site]) bySite[entry.site].push(entry);
+    const site = normaliseSite(entry.site);
+    if (bySite[site]) bySite[site].push({ ...entry, site });
   });
   siteOrder.forEach(site => {
     const marker = $('#' + markerId(site));
@@ -373,7 +403,7 @@ function renderSiteHistory() {
       button.title = latest ? `${site}: ${vialName(latest.vialId)} ${latest.amount || latest.amountMcg || '-'} ${latest.amountUnit || (latest.amountMcg ? 'mcg' : 'mg')} on ${latest.date}` : site;
     }
   });
-  $('#siteHistory').innerHTML = recent.length ? recent.map(s => `<article class="item"><div class="item-head"><b>${esc(s.site)}</b><span class="pill">${esc(s.date)} ${esc(s.time || '')}</span></div><span>${esc(vialName(s.vialId))} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))}</span><small>${esc(s.notes || '')}</small></article>`).join('') : '<div class="empty">No taken injections in the last 8 weeks.</div>';
+  $('#siteHistory').innerHTML = recent.length ? recent.map(s => `<article class="item"><div class="item-head"><b>${esc(normaliseSite(s.site))}</b><span class="pill">${esc(s.date)} ${esc(s.time || '')}</span></div><span>${esc(vialName(s.vialId))} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))}</span><small>${esc(s.notes || '')}</small></article>`).join('') : '<div class="empty">No taken injections in the last 8 weeks.</div>';
 }
 
 function insights() {
@@ -444,6 +474,7 @@ function normaliseVialForm(data) {
 }
 
 function expandSchedule(data) {
+  data.site = normaliseSite(data.site);
   const repeatEnabled = data.repeatEnabled === 'on';
   const count = repeatEnabled ? Math.min(52, Math.max(1, Math.floor(num(data.repeatCount) || 1))) : 1;
   const stepDays = data.repeatEvery === 'daily' ? 1 : 7;
