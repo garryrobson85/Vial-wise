@@ -228,6 +228,7 @@ function switchView(view) {
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === view));
+  $('#mobileMoreMenu')?.classList.add('hidden');
   pageTitle();
   if (view === 'vials') prefillVial();
   if (view === 'schedule') prefillSchedule();
@@ -239,6 +240,16 @@ $('#tabs').addEventListener('click', e => {
 });
 
 $('.bottom-nav').addEventListener('click', e => {
+  const button = e.target.closest('button[data-view]');
+  if (!button) return;
+  switchView(button.dataset.view);
+});
+
+$('#mobileMoreBtn')?.addEventListener('click', () => {
+  $('#mobileMoreMenu').classList.toggle('hidden');
+});
+
+$('#mobileMoreMenu').addEventListener('click', e => {
   const button = e.target.closest('button[data-view]');
   if (!button) return;
   switchView(button.dataset.view);
@@ -940,7 +951,12 @@ function download(name, text, type = 'application/json') {
   URL.revokeObjectURL(a.href);
 }
 
-$('#exportJson').addEventListener('click', () => download('vialwise-backup.json', JSON.stringify(db, null, 2)));
+$('#exportJson').addEventListener('click', () => {
+  db.lastBackupTest = new Date().toISOString();
+  localStorage.setItem(KEY, JSON.stringify(db));
+  render();
+  download('vialwise-backup.json', JSON.stringify(db, null, 2));
+});
 $('#testBackup').addEventListener('click', () => {
   try {
     const copy = JSON.parse(JSON.stringify(db));
