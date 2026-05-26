@@ -218,6 +218,8 @@ function applyMode() {
   $('#vialMode').classList.toggle('active', mode === 'vials');
   $$('.vial-tab').forEach(tab => tab.classList.toggle('hidden', mode !== 'vials'));
   $$('.cost-metric').forEach(item => item.classList.remove('hidden'));
+  $$('.pen-only').forEach(item => item.classList.toggle('hidden', mode !== 'pen'));
+  $$('.vial-only').forEach(item => item.classList.toggle('hidden', mode !== 'vials'));
   const active = $('.tab.active');
   if (active?.classList.contains('hidden')) switchView('today');
 }
@@ -243,6 +245,11 @@ $('.bottom-nav').addEventListener('click', e => {
 });
 
 $('#settingsBtn').addEventListener('click', () => switchView('setup'));
+$('#startVialInventory')?.addEventListener('click', () => {
+  db.settings.mode = 'vials';
+  applyMode();
+  switchView('vials');
+});
 
 document.addEventListener('click', e => {
   const jump = e.target.closest('[data-jump]')?.dataset.jump;

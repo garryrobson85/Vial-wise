@@ -8,7 +8,9 @@ Private GLP-1 and peptide tracking companion for local-first dose logs, costs, r
 - First-load onboarding for name, style, start weight, GLP-1, current dose and pen/vial mode
 - Mobile bottom navigation with Settings hub instead of a long top menu
 - Boutique theme options based on user preference
+- Stronger full-interface theme palettes
 - Pre-filled pen cost per dose and doses-per-pen tracking
+- Mode-specific setup: pen users see pen cost, vial users are guided into vial inventory
 - GLP-1 onboarding for Semaglutide, Tirzepatide and Retatrutide
 - Dose journey timeline
 - Schedule and injection site rotation tracking
