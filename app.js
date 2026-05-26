@@ -38,6 +38,10 @@ const defaults = {
     journey: 'GLP-1 weight journey',
     delivery: 'Reconstituted vial',
     mode: 'pen',
+    name: '',
+    gender: 'female',
+    theme: 'rose',
+    startWeight: '',
     units: 'kg',
     glp1: 'semaglutide',
     currentDose: '0.25',
@@ -144,6 +148,7 @@ function populateGlpSelects() {
   const options = Object.entries(glp1Options).map(([key, item]) => `<option value="${key}">${item.name}</option>`).join('');
   $('#settingsGlp1').innerHTML = options;
   $('#doseHistoryGlp1').innerHTML = options;
+  $('#onboardingGlp1').innerHTML = options;
 }
 
 function populateDoseSelect(glpKey, selected) {
@@ -163,6 +168,10 @@ function hydrateSettings() {
   $('#settingsGlp1').value = db.settings.glp1;
   $('#settingsDoseUnit').value = db.settings.doseUnit || 'mg';
   $('#doseHistoryGlp1').value = db.settings.glp1;
+  $('#onboardingGlp1').value = db.settings.glp1;
+  populateDoseSelect(db.settings.glp1, db.settings.currentDose);
+  $('#onboardingDose').innerHTML = $('#settingsDose').innerHTML;
+  $('#onboardingDose').value = db.settings.currentDose;
   const geminiForm = $('#geminiForm');
   if (geminiForm) {
     geminiForm.elements.geminiApiKey.value = db.gemini?.apiKey || '';
@@ -170,6 +179,8 @@ function hydrateSettings() {
     geminiForm.elements.useGemini.value = db.gemini?.useGemini || 'yes';
   }
   applyMode();
+  applyTheme();
+  showOnboardingIfNeeded();
 }
 
 function setTodayDefaults() {
@@ -185,6 +196,16 @@ document.addEventListener('click', e => {
 
 function pageTitle() {
   $('#pageTitle').textContent = $('.tab.active')?.textContent || 'Today';
+}
+
+function applyTheme() {
+  let theme = db.settings.theme || 'teal';
+  if (!db.settings.theme && db.settings.gender === 'female') theme = 'rose';
+  document.body.dataset.theme = theme;
+}
+
+function showOnboardingIfNeeded() {
+  $('#onboardingOverlay')?.classList.toggle('hidden', !!db.settings.onboarded);
 }
 
 function applyMode() {
@@ -203,6 +224,7 @@ function applyMode() {
 
 function switchView(view) {
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  $$('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === view));
   pageTitle();
   if (view === 'vials') prefillVial();
@@ -212,6 +234,19 @@ function switchView(view) {
 $('#tabs').addEventListener('click', e => {
   if (!e.target.matches('.tab') || e.target.classList.contains('hidden')) return;
   switchView(e.target.dataset.view);
+});
+
+$('.bottom-nav').addEventListener('click', e => {
+  const button = e.target.closest('button[data-view]');
+  if (!button) return;
+  switchView(button.dataset.view);
+});
+
+$('#settingsBtn').addEventListener('click', () => switchView('setup'));
+
+document.addEventListener('click', e => {
+  const jump = e.target.closest('[data-jump]')?.dataset.jump;
+  if (jump) switchView(jump);
 });
 
 $('#penMode').addEventListener('click', () => {
@@ -404,10 +439,12 @@ function render() {
   $('#scheduleList').innerHTML = [...db.schedule].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(vialName(s.vialId))}</b><div class="item-actions"><button onclick="markSchedule('${s.id}','Taken')">Taken</button><button onclick="editItem('schedule','${s.id}')">Edit</button><button onclick="del('schedule','${s.id}')">Delete</button></div></div><span>${esc(s.date)} ${esc(s.time)} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || '-')} | ${esc(s.status)}</span><small>${s.repeatLabel ? esc(s.repeatLabel) + ' | ' : ''}Cost: ${money(s.actualCost || autoCost(s))}</small><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No schedule entries.</div>';
   $('#siteSummary').textContent = nextSiteSuggestion();
   renderSiteHistory();
-  $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><div class="item-head"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><button onclick="editItem('weights','${w.id}')">Edit</button></div><span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
+  $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><div class="item-head"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><button onclick="editItem('weights','${w.id}')">Edit</button></div>${w.photo ? `<img class="entry-photo" src="${w.photo}" alt="Progress photo for ${esc(w.date)}">` : ''}<span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
+  renderPhotoGallery();
   $('#foodList').innerHTML = [...db.foods].sort((a, b) => b.date.localeCompare(a.date)).map(f => `<article class="item"><div class="item-head"><b>${esc(f.date)}: ${esc(f.meal)}</b><button onclick="editItem('foods','${f.id}')">Edit</button></div><small>${esc(f.portion)} portion | fatty ${esc(f.fatty)} | spicy ${esc(f.spicy)} | caffeine ${esc(f.caffeine)}</small><p>${esc(f.notes || '')}</p></article>`).join('') || '<div class="empty">No food entries.</div>';
   $('#symptomList').innerHTML = [...db.symptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(s.date)} ${esc(s.time || '')}: ${esc(s.symptom)}</b><button onclick="editItem('symptoms','${s.id}')">Edit</button></div><span>Severity ${esc(s.severity || 0)}/10 | possible trigger: ${esc(s.trigger || '-')}</span><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No symptom entries.</div>';
-  $('#digestionList').innerHTML = [...db.digestion].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)} ${esc(d.time || '')}: ${esc(d.movement)}</b><button onclick="editItem('digestion','${d.id}')">Edit</button></div><span>Frequency ${esc(d.frequency || 0)} | ${esc(d.bristol || 'Bristol not set')} | discomfort ${esc(d.discomfort || 0)}/10</span><small>Hydration ${esc(d.hydration || '-')} | trigger ${esc(d.trigger || '-')}</small><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No digestion entries.</div>';
+  $('#digestionList').innerHTML = [...db.digestion].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)} ${esc(d.time || '')}: ${esc(d.movement)}</b><button onclick="editItem('digestion','${d.id}')">Edit</button></div><span>${esc(d.bristol || 'Bristol not set')} | discomfort ${esc(d.discomfort || 0)}/10 | ${esc(d.urgency || 'Normal')}</span><small>Hydration ${esc(d.hydration || '-')} | trigger ${esc(d.trigger || '-')}</small><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No digestion entries.</div>';
+  renderDigestionSummary();
   $('#logList').innerHTML = [...db.logs].sort((a, b) => b.date.localeCompare(a.date)).map(l => `<article class="item"><div class="item-head"><b>${esc(l.date)}</b><button onclick="editItem('logs','${l.id}')">Edit</button></div><span>Appetite ${esc(l.appetite || '-')} | nausea ${esc(l.nausea || '-')} | energy ${esc(l.energy || '-')} | mood ${esc(l.mood || '-')} | ${esc(l.digestion || '-')}</span><p>${esc(l.notes || '')}</p></article>`).join('') || '<div class="empty">No daily logs.</div>';
   $('#doseHistoryList').innerHTML = [...db.doseHistory].sort((a, b) => b.date.localeCompare(a.date)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)}: ${esc(glpName(d.glp1))} ${esc(doseText(d.amount, d.unit))}</b><div class="item-actions"><button onclick="editItem('doseHistory','${d.id}')">Edit</button><button onclick="del('doseHistory','${d.id}')">Delete</button></div></div><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No dose journey points yet.</div>';
   $('#peptideList').innerHTML = db.peptides.map(p => `<article class="item"><div class="item-head"><b>${esc(p.name)}</b><div class="item-actions"><button onclick="editItem('peptides','${p.id}')">Edit</button><button onclick="del('peptides','${p.id}')">Delete</button></div></div><div><span class="pill">${esc(p.category || 'User-entered')}</span><span class="pill">${esc(doseText(p.amount, p.unit))}</span><span class="pill">${esc(p.frequency || 'No frequency')}</span></div><small>Start ${esc(p.startDate || '-')} | source ${esc(p.source || '-')} | storage ${esc(p.storage || '-')}</small><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No other peptides tracked.</div>';
@@ -539,6 +576,20 @@ function renderTrends() {
   $('#digestionTrendList').innerHTML = renderTrendList(buildTrendRows(digestionTargets, d => String(d.movement || 'digestion changes').toLowerCase()), `No food/digestion pattern has reached ${db.settings.trendThreshold || 3} matches yet.`);
 }
 
+function renderPhotoGallery() {
+  const photos = [...db.weights].filter(w => w.photo).sort((a, b) => b.date.localeCompare(a.date));
+  $('#photoGallery').innerHTML = photos.length ? photos.map(w => `<figure><img src="${w.photo}" alt="Progress photo ${esc(w.date)}"><figcaption>${esc(w.date)} | ${esc(w.weight)}${esc(w.unit)}</figcaption></figure>`).join('') : '<div class="empty">No progress photos yet.</div>';
+}
+
+function renderDigestionSummary() {
+  const counts = {};
+  db.digestion.forEach(d => {
+    counts[d.date] = (counts[d.date] || 0) + 1;
+  });
+  const rows = Object.entries(counts).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
+  $('#digestionSummary').innerHTML = rows.length ? rows.map(([date, count]) => `<div class="prompt"><b>${esc(String(count))}</b><span>${esc(date)} toilet visit${count === 1 ? '' : 's'} logged</span></div>`).join('') : 'Add toilet visits to see daily frequency.';
+}
+
 function suggestMeal(craving, preference) {
   const q = craving.toLowerCase();
   let idea = {
@@ -639,6 +690,7 @@ function expandSchedule(data) {
     return {
       ...entry,
       date: date.toISOString().slice(0, 10),
+      status: repeatEnabled && index > 0 && data.status === 'Taken' ? 'Planned' : data.status,
       id: id(),
       repeatGroupId: groupId,
       repeatLabel: count > 1 ? `${data.repeatEvery} ${index + 1}/${count}` : ''
@@ -657,18 +709,62 @@ function bindForm(idName, collection, normalise = data => data) {
   });
 }
 
+function compressPhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve('');
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const max = 900;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 $('#settingsGlp1').addEventListener('change', e => {
   populateDoseSelect(e.target.value);
   $('#settingsCustomDose').value = '';
 });
 
+$('#onboardingGlp1').addEventListener('change', e => {
+  $('#onboardingDose').innerHTML = (glp1Options[e.target.value]?.doses || []).map(d => `<option value="${d}">${d} mg</option>`).join('');
+});
+
+$('#onboardingForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const data = formObj(e.target);
+  db.settings = { ...db.settings, ...data, onboarded: true };
+  if (data.startWeight) {
+    db.weights.unshift({ id: id(), date: today(), weight: data.startWeight, unit: data.units || 'kg', appetite: 'Normal', notes: 'Starting weight from onboarding' });
+  }
+  localStorage.setItem(KEY, JSON.stringify(db));
+  hydrateSettings();
+  switchView('today');
+  feedback('save');
+  render();
+});
+
 $('#settingsForm').addEventListener('submit', e => {
   e.preventDefault();
   db.settings = { ...db.settings, ...formObj(e.target) };
+  db.settings.onboarded = true;
   localStorage.setItem(KEY, JSON.stringify(db));
   $('#settingsSaved').textContent = 'Saved';
   setTimeout(() => $('#settingsSaved').textContent = '', 1800);
   hydrateSettings();
+  applyTheme();
   feedback('save');
   render();
 });
@@ -682,7 +778,17 @@ $('#scheduleForm').addEventListener('submit', e => {
   feedback('save');
   save();
 });
-bindForm('weightForm', 'weights');
+$('#weightForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = formObj(e.target);
+  const file = e.target.elements.photo.files[0];
+  if (file) data.photo = await compressPhoto(file);
+  db.weights.push({ ...data, id: id() });
+  e.target.reset();
+  setTodayDefaults();
+  feedback('save');
+  save();
+});
 bindForm('foodForm', 'foods');
 bindForm('symptomForm', 'symptoms');
 bindForm('digestionForm', 'digestion');
@@ -872,7 +978,7 @@ $('#importJson').addEventListener('change', async e => {
   }
 });
 
-$('#sampleBtn').addEventListener('click', () => {
+$('#sampleBtn')?.addEventListener('click', () => {
   db.settings = { ...db.settings, mode: 'vials', glp1: 'semaglutide', currentDose: '0.25', customDose: '', doseUnit: 'mg', penCost: '120', penDoses: '4' };
   db.vials = [{ id: 'v1', name: 'Semaglutide 5mg vials', type: 'GLP-1', quantity: '2', amount: '5', amountUnit: 'mg', water: '10', waterUnit: 'units', remaining: '8.5', remainingUnit: 'mg', dose: '0.25', doseUnit: 'mg', cost: '85', batch: 'Demo', expiry: '2026-12-01', notes: 'Demo: 2 x 5mg vials' }];
   db.schedule = [{ id: 's1', vialId: 'v1', date: today(), time: '09:00', amount: '0.25', amountUnit: 'mg', site: 'Left abdomen', status: 'Planned', notes: 'Demo entry' }];

@@ -5,6 +5,9 @@ Private GLP-1 and peptide tracking companion for local-first dose logs, costs, r
 ## What is included
 
 - Pre-filled pen / Vials mode navigation
+- First-load onboarding for name, style, start weight, GLP-1, current dose and pen/vial mode
+- Mobile bottom navigation with Settings hub instead of a long top menu
+- Boutique theme options based on user preference
 - Pre-filled pen cost per dose and doses-per-pen tracking
 - GLP-1 onboarding for Semaglutide, Tirzepatide and Retatrutide
 - Dose journey timeline
@@ -18,7 +21,10 @@ Private GLP-1 and peptide tracking companion for local-first dose logs, costs, r
 - Vial, pen and cost-per-injection calculations
 - Peptide-neutral reconstitution calculator with mg/mcg/IU, ml/U-100 units, syringe sizing, rounding, doses per vial and draw warnings
 - Weight, food, symptom, mood and daily check-in logs
+- Optional local progress photos in the weight tracker with mobile camera/upload support
 - Digestion tracker for constipation, diarrhoea, frequency, Bristol type, hydration and discomfort
+- Event-based toilet visit logging with automatic daily frequency summary
+- Mobile quick-log actions on Today
 - Food and symptom correlation hints
 - Trends tab with user-controlled match threshold for food/drink links to symptoms and digestion changes
 - Healthy swap builder with simple recipe suggestions
