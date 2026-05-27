@@ -33,6 +33,12 @@ const siteAliases = {
   'r arm': 'Right upper arm'
 };
 
+const geminiPricesUsd = {
+  'gemini-2.5-flash': { input: 0.30, output: 2.50 },
+  'gemini-2.5-pro': { input: 1.25, output: 10.00 },
+  'gemini-2.5-flash-lite': { input: 0.10, output: 0.40 }
+};
+
 const defaults = {
   settings: {
     journey: 'GLP-1 weight journey',
@@ -65,6 +71,7 @@ const defaults = {
   peptideSymptoms: [],
   foodIdeas: [],
   gemini: { apiKey: '', model: 'gemini-2.5-flash', useGemini: 'yes' },
+  geminiUsage: [],
   compounds: []
 };
 
@@ -81,6 +88,7 @@ function loadDb() {
     peptides: loaded.peptides || loaded.compounds || [],
     peptideSymptoms: loaded.peptideSymptoms || [],
     gemini: { apiKey: '', model: 'gemini-2.5-flash', useGemini: 'yes', ...(loaded.gemini || {}) },
+    geminiUsage: loaded.geminiUsage || [],
     foodIdeas: loaded.foodIdeas || []
   };
 }
@@ -94,6 +102,7 @@ const save = () => {
 const id = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const num = v => Number(v) || 0;
 const money = n => 'GBP ' + (Number(n) || 0).toFixed(2);
+const usd = n => '$' + (Number(n) || 0).toFixed(4);
 const cleanNumber = n => String(Number(n || 0).toFixed(3)).replace(/\.?0+$/, '');
 const esc = s => String(s || '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const formObj = form => Object.fromEntries(new FormData(form).entries());
@@ -486,6 +495,7 @@ function render() {
   $('#symptomList').innerHTML = [...db.symptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(s.date)} ${esc(s.time || '')}: ${esc(s.symptom)}</b><button onclick="editItem('symptoms','${s.id}')">Edit</button></div><span>Severity ${esc(s.severity || 0)}/10 | possible trigger: ${esc(s.trigger || '-')}</span><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No symptom entries.</div>';
   $('#digestionList').innerHTML = [...db.digestion].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)} ${esc(d.time || '')}: ${esc(d.movement)}</b><button onclick="editItem('digestion','${d.id}')">Edit</button></div><span>${esc(d.bristol || 'Bristol not set')} | discomfort ${esc(d.discomfort || 0)}/10 | ${esc(d.urgency || 'Normal')}</span><small>Hydration ${esc(d.hydration || '-')} | trigger ${esc(d.trigger || '-')}</small><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No digestion entries.</div>';
   renderDigestionSummary();
+  renderGeminiUsage();
   $('#logList').innerHTML = [...db.logs].sort((a, b) => b.date.localeCompare(a.date)).map(l => `<article class="item"><div class="item-head"><b>${esc(l.date)}</b><button onclick="editItem('logs','${l.id}')">Edit</button></div><span>Appetite ${esc(l.appetite || '-')} | nausea ${esc(l.nausea || '-')} | energy ${esc(l.energy || '-')} | mood ${esc(l.mood || '-')} | ${esc(l.digestion || '-')}</span><p>${esc(l.notes || '')}</p></article>`).join('') || '<div class="empty">No daily logs.</div>';
   $('#doseHistoryList').innerHTML = [...db.doseHistory].sort((a, b) => b.date.localeCompare(a.date)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)}: ${esc(glpName(d.glp1))} ${esc(doseText(d.amount, d.unit))}</b><div class="item-actions"><button onclick="editItem('doseHistory','${d.id}')">Edit</button><button onclick="del('doseHistory','${d.id}')">Delete</button></div></div><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No dose journey points yet.</div>';
   $('#peptideList').innerHTML = db.peptides.map(p => `<article class="item"><div class="item-head"><b>${esc(p.name)}</b><div class="item-actions"><button onclick="editItem('peptides','${p.id}')">Edit</button><button onclick="del('peptides','${p.id}')">Delete</button></div></div><div><span class="pill">${esc(p.category || 'User-entered')}</span><span class="pill">${esc(doseText(p.amount, p.unit))}</span><span class="pill">${esc(p.frequency || 'No frequency')}</span></div><small>Start ${esc(p.startDate || '-')} | source ${esc(p.source || '-')} | storage ${esc(p.storage || '-')}</small><p>${esc(p.notes || '')}</p></article>`).join('') || '<div class="empty">No other peptides tracked.</div>';
@@ -655,6 +665,38 @@ function renderMealIdea(idea, source = 'Built-in fallback') {
   $('#mealIdeaResult').innerHTML = `<b>${esc(idea.title)}</b><p>${esc(idea.swap)}</p><b>Ingredients</b><ul>${idea.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul><b>Recipe</b><ol>${idea.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol><small>${esc(source)}</small>`;
 }
 
+function geminiUsageCost(model, usage = {}) {
+  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash'];
+  const promptTokens = num(usage.promptTokenCount);
+  const outputTokens = Math.max(num(usage.candidatesTokenCount) + num(usage.thoughtsTokenCount), num(usage.totalTokenCount) - promptTokens, 0);
+  const costUsd = (promptTokens / 1000000) * prices.input + (outputTokens / 1000000) * prices.output;
+  return { promptTokens, outputTokens, totalTokens: promptTokens + outputTokens, costUsd };
+}
+
+function recordGeminiUsage(model, usage) {
+  const cost = geminiUsageCost(model, usage);
+  db.geminiUsage.unshift({ id: id(), date: new Date().toISOString(), model, ...cost });
+  db.geminiUsage = db.geminiUsage.slice(0, 100);
+  return cost;
+}
+
+function renderGeminiUsage() {
+  let box = $('#geminiCostBox');
+  if (!box && $('#geminiStatus')) {
+    box = document.createElement('div');
+    box.id = 'geminiCostBox';
+    box.className = 'result muted';
+    $('#geminiStatus').insertAdjacentElement('afterend', box);
+  }
+  if (!box) return;
+  const last = db.geminiUsage[0];
+  const total = db.geminiUsage.reduce((sum, row) => sum + num(row.costUsd), 0);
+  const calls = db.geminiUsage.length;
+  const model = db.gemini?.model || 'gemini-2.5-flash';
+  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash'];
+  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last call</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Saved total</span><b>${usd(total)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">Estimate uses Gemini token counts returned after each successful request. Google bills in USD and final billing may vary by tier, model, free quota and taxes.</p>`;
+}
+
 function geminiPrompt(craving, preference) {
   return `You are helping a GLP-1 user choose a practical food swap. Do not give medical advice. Suggest one healthier alternative and a simple recipe. The user wants: ${craving}. Preference: ${preference}. Make it realistic, satisfying, higher protein where suitable, gentle on nausea/reflux where suitable, and avoid moralising language. Return compact JSON only with keys: title, swap, ingredients (array of 5-8 strings), steps (array of 4-6 strings), note.`;
 }
@@ -679,7 +721,7 @@ async function generateGeminiMeal(craving, preference) {
   if (!text) throw new Error('Gemini returned no text');
   const parsed = JSON.parse(text);
   if (!parsed.title || !parsed.ingredients || !parsed.steps) throw new Error('Gemini response was incomplete');
-  return { title: parsed.title, swap: parsed.swap || parsed.note || '', ingredients: parsed.ingredients, steps: parsed.steps };
+  return { title: parsed.title, swap: parsed.swap || parsed.note || '', ingredients: parsed.ingredients, steps: parsed.steps, usageMetadata: data.usageMetadata || {} };
 }
 
 window.del = (key, itemId) => {
@@ -880,9 +922,11 @@ async function makeMealIdea(data) {
   $('#mealIdeaResult').textContent = 'Building suggestion...';
   try {
     const idea = await generateGeminiMeal(data.craving, data.preference);
-    db.foodIdeas.push({ ...data, ...idea, id: id(), date: today(), source: 'Gemini' });
-    renderMealIdea(idea, `Gemini ${db.gemini.model}`);
-    $('#geminiStatus').textContent = 'Gemini generated the latest suggestion.';
+    const cost = recordGeminiUsage(db.gemini.model, idea.usageMetadata);
+    const { usageMetadata, ...savedIdea } = idea;
+    db.foodIdeas.push({ ...data, ...savedIdea, id: id(), date: today(), source: 'Gemini', costUsd: cost.costUsd });
+    renderMealIdea(savedIdea, `Gemini ${db.gemini.model} | estimated ${usd(cost.costUsd)}`);
+    $('#geminiStatus').textContent = `Gemini generated the latest suggestion. Estimated API cost: ${usd(cost.costUsd)}.`;
   } catch (err) {
     const idea = suggestMeal(data.craving, data.preference);
     db.foodIdeas.push({ ...data, ...idea, id: id(), date: today(), source: 'Built-in fallback', fallbackReason: String(err.message || err) });
