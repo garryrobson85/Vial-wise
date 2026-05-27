@@ -1,5 +1,6 @@
 const KEY = 'vialwise_v7';
 const OLD_KEYS = ['vialwise_v6', 'vialwise_v5'];
+const EMBEDDED_GEMINI_API_KEY = ''; // Temporary testing only. Do not publish a real key in a public app.
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -34,6 +35,7 @@ const siteAliases = {
 };
 
 const geminiPricesUsd = {
+  'gemini-2.0-flash': { input: 0.10, output: 0.40 },
   'gemini-2.5-flash': { input: 0.30, output: 2.50 },
   'gemini-2.5-pro': { input: 1.25, output: 10.00 },
   'gemini-2.5-flash-lite': { input: 0.10, output: 0.40 }
@@ -70,7 +72,7 @@ const defaults = {
   peptides: [],
   peptideSymptoms: [],
   foodIdeas: [],
-  gemini: { apiKey: '', model: 'gemini-2.5-flash', useGemini: 'yes' },
+  gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes' },
   geminiUsage: [],
   compounds: []
 };
@@ -87,7 +89,7 @@ function loadDb() {
     doseHistory: loaded.doseHistory || [],
     peptides: loaded.peptides || loaded.compounds || [],
     peptideSymptoms: loaded.peptideSymptoms || [],
-    gemini: { apiKey: '', model: 'gemini-2.5-flash', useGemini: 'yes', ...(loaded.gemini || {}) },
+    gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes', ...(loaded.gemini || {}) },
     geminiUsage: loaded.geminiUsage || [],
     foodIdeas: loaded.foodIdeas || []
   };
@@ -166,6 +168,14 @@ function populateDoseSelect(glpKey, selected) {
   if (selected && [...select.options].some(o => o.value === String(selected))) select.value = String(selected);
 }
 
+function ensureGeminiModelOptions() {
+  const select = $('#geminiForm')?.elements.geminiModel;
+  if (!select) return;
+  select.innerHTML = '<option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>';
+  select.value = 'gemini-2.5-flash-lite';
+  select.closest('label')?.classList.add('hidden');
+}
+
 function hydrateSettings() {
   populateGlpSelects();
   const form = $('#settingsForm');
@@ -183,8 +193,10 @@ function hydrateSettings() {
   $('#onboardingDose').value = db.settings.currentDose;
   const geminiForm = $('#geminiForm');
   if (geminiForm) {
+    ensureGeminiModelOptions();
     geminiForm.elements.geminiApiKey.value = db.gemini?.apiKey || '';
-    geminiForm.elements.geminiModel.value = db.gemini?.model || 'gemini-2.5-flash';
+    db.gemini.model = 'gemini-2.5-flash-lite';
+    geminiForm.elements.geminiModel.value = 'gemini-2.5-flash-lite';
     geminiForm.elements.useGemini.value = db.gemini?.useGemini || 'yes';
   }
   applyMode();
@@ -666,7 +678,7 @@ function renderMealIdea(idea, source = 'Built-in fallback') {
 }
 
 function geminiUsageCost(model, usage = {}) {
-  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash'];
+  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash-lite'];
   const promptTokens = num(usage.promptTokenCount);
   const outputTokens = Math.max(num(usage.candidatesTokenCount) + num(usage.thoughtsTokenCount), num(usage.totalTokenCount) - promptTokens, 0);
   const costUsd = (promptTokens / 1000000) * prices.input + (outputTokens / 1000000) * prices.output;
@@ -692,9 +704,10 @@ function renderGeminiUsage() {
   const last = db.geminiUsage[0];
   const total = db.geminiUsage.reduce((sum, row) => sum + num(row.costUsd), 0);
   const calls = db.geminiUsage.length;
-  const model = db.gemini?.model || 'gemini-2.5-flash';
-  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash'];
-  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last call</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Saved total</span><b>${usd(total)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">Estimate uses Gemini token counts returned after each successful request. Google bills in USD and final billing may vary by tier, model, free quota and taxes.</p>`;
+  const model = 'gemini-2.5-flash-lite';
+  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash-lite'];
+  const keyMode = db.gemini?.apiKey ? 'User key saved in this browser.' : (EMBEDDED_GEMINI_API_KEY ? 'Temporary embedded key active.' : 'No key active; fallback suggestions will be used.');
+  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last call</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Saved total</span><b>${usd(total)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">${esc(keyMode)} Estimate uses Gemini token counts returned after each successful request. Google bills in USD and final billing may vary by tier, model, free quota and taxes.</p>`;
 }
 
 function geminiPrompt(craving, preference) {
@@ -702,9 +715,10 @@ function geminiPrompt(craving, preference) {
 }
 
 async function generateGeminiMeal(craving, preference) {
-  if (!db.gemini?.apiKey || db.gemini.useGemini === 'no') throw new Error('Gemini not configured');
-  const model = db.gemini.model || 'gemini-2.5-flash';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(db.gemini.apiKey)}`, {
+  const apiKey = db.gemini?.apiKey || EMBEDDED_GEMINI_API_KEY;
+  if (!apiKey || db.gemini.useGemini === 'no') throw new Error('Gemini not configured');
+  const model = 'gemini-2.5-flash-lite';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -922,10 +936,10 @@ async function makeMealIdea(data) {
   $('#mealIdeaResult').textContent = 'Building suggestion...';
   try {
     const idea = await generateGeminiMeal(data.craving, data.preference);
-    const cost = recordGeminiUsage(db.gemini.model, idea.usageMetadata);
+    const cost = recordGeminiUsage('gemini-2.5-flash-lite', idea.usageMetadata);
     const { usageMetadata, ...savedIdea } = idea;
     db.foodIdeas.push({ ...data, ...savedIdea, id: id(), date: today(), source: 'Gemini', costUsd: cost.costUsd });
-    renderMealIdea(savedIdea, `Gemini ${db.gemini.model} | estimated ${usd(cost.costUsd)}`);
+    renderMealIdea(savedIdea, `Gemini 2.5 Flash-Lite | estimated ${usd(cost.costUsd)}`);
     $('#geminiStatus').textContent = `Gemini generated the latest suggestion. Estimated API cost: ${usd(cost.costUsd)}.`;
   } catch (err) {
     const idea = suggestMeal(data.craving, data.preference);
@@ -951,7 +965,7 @@ $('#geminiForm').addEventListener('submit', e => {
   e.preventDefault();
   const data = formObj(e.target);
   db.gemini = { apiKey: data.geminiApiKey, model: data.geminiModel, useGemini: data.useGemini };
-  $('#geminiStatus').textContent = data.geminiApiKey ? 'Gemini settings saved in this browser.' : 'No Gemini key saved. Built-in fallback will be used.';
+  $('#geminiStatus').textContent = data.geminiApiKey ? 'Gemini settings saved in this browser.' : (EMBEDDED_GEMINI_API_KEY ? 'Using temporary embedded Gemini key for testing.' : 'No Gemini key saved. Built-in fallback will be used.');
   feedback('save');
   save();
 });
@@ -959,7 +973,7 @@ $('#geminiForm').addEventListener('submit', e => {
 $('#clearGeminiKey').addEventListener('click', () => {
   db.gemini = { ...db.gemini, apiKey: '' };
   hydrateSettings();
-  $('#geminiStatus').textContent = 'Gemini key cleared. Built-in fallback will be used.';
+  $('#geminiStatus').textContent = EMBEDDED_GEMINI_API_KEY ? 'User key cleared. Temporary embedded Gemini key is still active.' : 'Gemini key cleared. Built-in fallback will be used.';
   feedback('save');
   save();
 });
