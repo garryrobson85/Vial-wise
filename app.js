@@ -218,10 +218,15 @@ function applyMode() {
   $('#vialMode').classList.toggle('active', mode === 'vials');
   $$('.vial-tab').forEach(tab => tab.classList.toggle('hidden', mode !== 'vials'));
   $$('.cost-metric').forEach(item => item.classList.remove('hidden'));
-  $$('.pen-only').forEach(item => item.classList.toggle('hidden', mode !== 'pen'));
-  $$('.vial-only').forEach(item => item.classList.toggle('hidden', mode !== 'vials'));
+  syncModePanels(mode);
   const active = $('.tab.active');
   if (active?.classList.contains('hidden')) switchView('today');
+}
+
+function syncModePanels(modeValue) {
+  const mode = modeValue || db.settings.mode || 'pen';
+  $$('.pen-only').forEach(item => item.classList.toggle('hidden', mode !== 'pen'));
+  $$('.vial-only').forEach(item => item.classList.toggle('hidden', mode !== 'vials'));
 }
 
 function switchView(view) {
@@ -436,6 +441,12 @@ function renderChecklist() {
     ['Export a backup', !!db.lastBackupTest]
   ];
   const done = items.filter(([, ok]) => ok).length;
+  if (done === items.length) {
+    $('#onboardingChecklist').classList.add('hidden');
+    $('#onboardingChecklist').innerHTML = '';
+    return;
+  }
+  $('#onboardingChecklist').classList.remove('hidden');
   $('#onboardingChecklist').innerHTML = `<div class="check-head"><b>Setup checklist</b><span>${done}/${items.length}</span></div><div class="check-grid">${items.map(([label, ok]) => `<span class="${ok ? 'done' : ''}">${ok ? '✓' : '○'} ${esc(label)}</span>`).join('')}</div>`;
 }
 
@@ -759,6 +770,9 @@ $('#settingsGlp1').addEventListener('change', e => {
 $('#onboardingGlp1').addEventListener('change', e => {
   $('#onboardingDose').innerHTML = (glp1Options[e.target.value]?.doses || []).map(d => `<option value="${d}">${d} mg</option>`).join('');
 });
+
+$('#onboardingForm').elements.mode.addEventListener('change', e => syncModePanels(e.target.value));
+$('#settingsForm').elements.mode.addEventListener('change', e => syncModePanels(e.target.value));
 
 $('#onboardingForm').addEventListener('submit', e => {
   e.preventDefault();
