@@ -73,6 +73,7 @@ const defaults = {
   peptideSymptoms: [],
   foodIdeas: [],
   gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes' },
+  geminiFreeDailyRequests: '1000',
   geminiUsage: [],
   compounds: []
 };
@@ -90,6 +91,7 @@ function loadDb() {
     peptides: loaded.peptides || loaded.compounds || [],
     peptideSymptoms: loaded.peptideSymptoms || [],
     gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes', ...(loaded.gemini || {}) },
+    geminiFreeDailyRequests: loaded.geminiFreeDailyRequests || '1000',
     geminiUsage: loaded.geminiUsage || [],
     foodIdeas: loaded.foodIdeas || []
   };
@@ -174,6 +176,9 @@ function ensureGeminiModelOptions() {
   select.innerHTML = '<option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>';
   select.value = 'gemini-2.5-flash-lite';
   select.closest('label')?.classList.add('hidden');
+  if (!$('#geminiFreeDailyRequests')) {
+    select.closest('label')?.insertAdjacentHTML('afterend', '<label>Free requests/day<input id="geminiFreeDailyRequests" name="geminiFreeDailyRequests" type="number" min="0" step="1" value="1000"></label>');
+  }
 }
 
 function hydrateSettings() {
@@ -198,6 +203,7 @@ function hydrateSettings() {
     db.gemini.model = 'gemini-2.5-flash-lite';
     geminiForm.elements.geminiModel.value = 'gemini-2.5-flash-lite';
     geminiForm.elements.useGemini.value = db.gemini?.useGemini || 'yes';
+    if (geminiForm.elements.geminiFreeDailyRequests) geminiForm.elements.geminiFreeDailyRequests.value = db.geminiFreeDailyRequests || '1000';
   }
   applyMode();
   applyTheme();
@@ -692,6 +698,24 @@ function recordGeminiUsage(model, usage) {
   return cost;
 }
 
+function sameUtcDay(a, b = new Date()) {
+  const date = new Date(a);
+  return date.getUTCFullYear() === b.getUTCFullYear() && date.getUTCMonth() === b.getUTCMonth() && date.getUTCDate() === b.getUTCDate();
+}
+
+function geminiBillingSummary() {
+  const freeDaily = Math.max(0, Math.floor(num(db.geminiFreeDailyRequests) || 0));
+  const todayRows = db.geminiUsage.filter(row => sameUtcDay(row.date));
+  const billableToday = todayRows.slice(freeDaily);
+  return {
+    freeDaily,
+    usedToday: todayRows.length,
+    freeLeft: Math.max(0, freeDaily - todayRows.length),
+    billableTodayCost: billableToday.reduce((sum, row) => sum + num(row.costUsd), 0),
+    trackedCost: db.geminiUsage.reduce((sum, row) => sum + num(row.costUsd), 0)
+  };
+}
+
 function renderGeminiUsage() {
   let box = $('#geminiCostBox');
   if (!box && $('#geminiStatus')) {
@@ -702,12 +726,12 @@ function renderGeminiUsage() {
   }
   if (!box) return;
   const last = db.geminiUsage[0];
-  const total = db.geminiUsage.reduce((sum, row) => sum + num(row.costUsd), 0);
   const calls = db.geminiUsage.length;
   const model = 'gemini-2.5-flash-lite';
   const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash-lite'];
   const keyMode = db.gemini?.apiKey ? 'User key saved in this browser.' : (EMBEDDED_GEMINI_API_KEY ? 'Temporary embedded key active.' : 'No key active; fallback suggestions will be used.');
-  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last call</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Saved total</span><b>${usd(total)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">${esc(keyMode)} Estimate uses Gemini token counts returned after each successful request. Google bills in USD and final billing may vary by tier, model, free quota and taxes.</p>`;
+  const billing = geminiBillingSummary();
+  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last raw cost</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Free left today</span><b>${billing.freeLeft}/${billing.freeDaily}</b></div><div><span>Billable today</span><b>${usd(billing.billableTodayCost)}</b></div><div><span>Tracked raw total</span><b>${usd(billing.trackedCost)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">${esc(keyMode)} Free allowance is estimated by request count; each food suggestion is one request. Google bills in USD and final billing may vary by tier, model, free quota and taxes.</p>`;
 }
 
 function geminiPrompt(craving, preference) {
@@ -939,8 +963,10 @@ async function makeMealIdea(data) {
     const cost = recordGeminiUsage('gemini-2.5-flash-lite', idea.usageMetadata);
     const { usageMetadata, ...savedIdea } = idea;
     db.foodIdeas.push({ ...data, ...savedIdea, id: id(), date: today(), source: 'Gemini', costUsd: cost.costUsd });
-    renderMealIdea(savedIdea, `Gemini 2.5 Flash-Lite | estimated ${usd(cost.costUsd)}`);
-    $('#geminiStatus').textContent = `Gemini generated the latest suggestion. Estimated API cost: ${usd(cost.costUsd)}.`;
+    const billing = geminiBillingSummary();
+    const costLabel = billing.usedToday <= billing.freeDaily ? 'covered by free allowance' : `billable estimate ${usd(cost.costUsd)}`;
+    renderMealIdea(savedIdea, `Gemini 2.5 Flash-Lite | ${costLabel}`);
+    $('#geminiStatus').textContent = `Gemini generated the latest suggestion: ${costLabel}.`;
   } catch (err) {
     const idea = suggestMeal(data.craving, data.preference);
     db.foodIdeas.push({ ...data, ...idea, id: id(), date: today(), source: 'Built-in fallback', fallbackReason: String(err.message || err) });
@@ -965,6 +991,7 @@ $('#geminiForm').addEventListener('submit', e => {
   e.preventDefault();
   const data = formObj(e.target);
   db.gemini = { apiKey: data.geminiApiKey, model: data.geminiModel, useGemini: data.useGemini };
+  db.geminiFreeDailyRequests = data.geminiFreeDailyRequests || '1000';
   $('#geminiStatus').textContent = data.geminiApiKey ? 'Gemini settings saved in this browser.' : (EMBEDDED_GEMINI_API_KEY ? 'Using temporary embedded Gemini key for testing.' : 'No Gemini key saved. Built-in fallback will be used.');
   feedback('save');
   save();

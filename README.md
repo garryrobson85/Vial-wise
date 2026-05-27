@@ -33,6 +33,7 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - Optional bring-your-own Gemini API key for AI food swaps, with automatic built-in fallback
 - Temporary embedded Gemini key option for private friend testing before a secure backend is added
 - Gemini API call cost estimates from returned token usage, with last-call and saved-total tracking
+- Free daily Gemini request allowance estimate so testing can show covered versus billable usage
 - Other peptide tracker for user-entered records
 - Peptide symptom log with repeated co-use pattern notes
 - Optional click/save sounds and mobile vibration feedback
