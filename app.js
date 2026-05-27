@@ -233,6 +233,7 @@ function switchView(view) {
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === view));
+  $('#mobileMoreMenu')?.classList.remove('open');
   $('#mobileMoreMenu')?.classList.add('hidden');
   pageTitle();
   if (view === 'vials') prefillVial();
@@ -251,7 +252,11 @@ $('.bottom-nav').addEventListener('click', e => {
 });
 
 $('#mobileMoreBtn')?.addEventListener('click', () => {
-  $('#mobileMoreMenu').classList.toggle('hidden');
+  const menu = $('#mobileMoreMenu');
+  if (!menu) return;
+  const open = !menu.classList.contains('open');
+  menu.classList.toggle('open', open);
+  menu.classList.toggle('hidden', !open);
 });
 
 $('#mobileMoreMenu').addEventListener('click', e => {
@@ -777,9 +782,31 @@ $('#settingsForm').elements.mode.addEventListener('change', e => syncModePanels(
 $('#onboardingForm').addEventListener('submit', e => {
   e.preventDefault();
   const data = formObj(e.target);
-  db.settings = { ...db.settings, ...data, onboarded: true };
-  if (data.startWeight) {
-    db.weights.unshift({ id: id(), date: today(), weight: data.startWeight, unit: data.units || 'kg', appetite: 'Normal', notes: 'Starting weight from onboarding' });
+  const settingsData = { ...data };
+  Object.keys(settingsData).forEach(key => {
+    if (key.startsWith('onboardVial')) delete settingsData[key];
+  });
+  db.settings = { ...db.settings, ...settingsData, onboarded: true };
+  if (settingsData.mode === 'vials' && data.onboardVialName && data.onboardVialAmount) {
+    db.vials.push({
+      ...normaliseVialForm({
+        name: data.onboardVialName,
+        type: 'GLP-1 / peptide',
+        quantity: data.onboardVialQuantity || '1',
+        amount: data.onboardVialAmount,
+        amountUnit: data.onboardVialAmountUnit || 'mg',
+        water: data.onboardVialWater,
+        waterUnit: data.onboardVialWaterUnit || 'ml',
+        cost: data.onboardVialCost,
+        dose: settingsData.customDose || settingsData.currentDose,
+        doseUnit: settingsData.doseUnit || 'mg',
+        notes: 'Added during onboarding'
+      }),
+      id: id()
+    });
+  }
+  if (settingsData.startWeight) {
+    db.weights.unshift({ id: id(), date: today(), weight: settingsData.startWeight, unit: settingsData.units || 'kg', appetite: 'Normal', notes: 'Starting weight from onboarding' });
   }
   localStorage.setItem(KEY, JSON.stringify(db));
   hydrateSettings();
