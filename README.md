@@ -1,6 +1,6 @@
-# VialWise
+# VialWise GLP Companion
 
-Private GLP-1 and peptide tracking companion for local-first dose logs, costs, reconstitution arithmetic, food patterns, symptoms, mood and backups.
+Private GLP-1 injection tracking companion for local-first dose logs, site rotation, weight, costs, reconstitution arithmetic, food patterns, symptoms, mood, peptide notes and backups.
 
 ## What is included
 

@@ -3,17 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="VialWise is a private GLP-1 and peptide tracking companion for dose logs, costs, symptoms, food patterns and local data export." />
+  <meta name="description" content="VialWise GLP Companion is a private GLP-1 injection tracker for dose schedules, site rotation, weight logs, symptoms, food patterns, vial costs and peptide notes." />
+  <meta name="keywords" content="GLP-1 tracker, GLP companion, semaglutide tracker, tirzepatide tracker, injection schedule, site rotation, peptide tracker, VialWise" />
+  <meta name="apple-mobile-web-app-title" content="VialWise GLP" />
   <meta name="theme-color" content="#0f766e" />
-  <title>VialWise | GLP-1 & Peptide Companion</title>
+  <title>VialWise GLP Companion | GLP-1 Injection Tracker</title>
+  <link rel="icon" href="assets/vialwise-glp-icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-theme="teal">
 <div id="onboardingOverlay" class="onboarding-overlay hidden">
   <form id="onboardingForm" class="onboarding-panel">
-    <img class="onboarding-logo" src="assets/vialwise-logo-transparent-v2.png" alt="VialWise" />
+    <img class="onboarding-logo" src="assets/vialwise-logo-transparent-v2.png" alt="VialWise GLP Companion" />
+    <div class="brand-badge">GLP Companion</div>
     <p class="eyebrow">One-time setup</p>
-    <h1>Make VialWise yours</h1>
+    <h1>Make VialWise GLP Companion yours</h1>
     <div class="form-grid">
       <label>Your name<input name="name" placeholder="First name"></label>
       <label>Gender / style<select name="gender"><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option><option value="private">Rather not say</option></select></label>
@@ -46,8 +50,9 @@
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand">
-      <img class="brand-logo" src="assets/vialwise-logo-transparent-v2.png" alt="VialWise" />
-      <span>Private GLP-1 and peptide companion</span>
+      <img class="brand-logo" src="assets/vialwise-logo-transparent-v2.png" alt="VialWise GLP Companion" />
+      <strong class="brand-subtitle">GLP Companion</strong>
+      <span>Private GLP-1 injection, weight, symptom and peptide tracker</span>
     </div>
     <div class="mode-switch desktop-mode-switch" role="group" aria-label="Tracking mode">
       <button id="penMode" class="mode-btn active" type="button">Pre-filled pen</button>
@@ -70,7 +75,7 @@
       <button class="tab vial-tab" data-view="peptides">Other Peptides</button>
       <button class="tab" data-view="export">Export</button>
     </nav>
-    <p class="disclaimer"><b>Safety first:</b> VialWise stores user-entered data and performs arithmetic only. It does not recommend doses, compounds, peptides or treatment.</p>
+    <p class="disclaimer"><b>Safety first:</b> VialWise GLP Companion stores user-entered data and performs arithmetic only. It does not recommend doses, compounds, peptides or treatment.</p>
   </aside>
 
   <main class="main-content">
