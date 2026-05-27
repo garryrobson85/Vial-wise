@@ -265,6 +265,12 @@ $('#mobileMoreMenu').addEventListener('click', e => {
   switchView(button.dataset.view);
 });
 
+$('#promptBox')?.addEventListener('click', e => {
+  const button = e.target.closest('button[data-view]');
+  if (!button) return;
+  switchView(button.dataset.view);
+});
+
 $('#settingsBtn').addEventListener('click', () => switchView('setup'));
 $('#startVialInventory')?.addEventListener('click', () => {
   db.settings.mode = 'vials';
@@ -425,12 +431,13 @@ function renderToday(spend, value, doses, cost) {
   $('#heroCost').textContent = `${money(cost)} / injection`;
   $('#heroNext').textContent = next ? `Next: ${next.date} ${next.time || ''}` : 'Next: not scheduled';
   $('#todayBox').innerHTML = due.length ? due.map(s => `<div class="item"><b>${esc(vialName(s.vialId))}</b><span>${esc(s.time || '')} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || 'site not set')} | ${esc(s.status)}</span></div>`).join('') : 'No schedule entries due today.';
-  $('#promptBox').innerHTML = [
-    `Dose: ${doseText(dose.amount, dose.unit)} ${glpName()}`,
-    nextSiteSuggestion(),
-    db.logs.some(l => l.date === today()) ? 'Daily check-in completed today.' : 'Add appetite, nausea, energy and mood today.',
-    db.foods.some(f => f.date === today()) ? 'Food logged today.' : 'Log food if symptoms appear later.'
-  ].map(item => `<div class="prompt"><b>+</b><span>${esc(item)}</span></div>`).join('');
+  const prompts = [
+    { view: 'schedule', text: `Dose: ${doseText(dose.amount, dose.unit)} ${glpName()}` },
+    { view: 'sites', text: nextSiteSuggestion() },
+    { view: 'logs', text: db.logs.some(l => l.date === today()) ? 'Daily check-in completed today.' : 'Add appetite, nausea, energy and mood today.' },
+    { view: 'food', text: db.foods.some(f => f.date === today()) ? 'Food logged today.' : 'Log food if symptoms appear later.' }
+  ];
+  $('#promptBox').innerHTML = prompts.map(item => `<button class="prompt prompt-action" type="button" data-jump="${item.view}"><b>+</b><span>${esc(item.text)}</span></button>`).join('');
   $('#costSnapshot').innerHTML = cost ? `<b>${money(cost)}</b> estimated per injection<br><b>${money(cost * 4.33)}</b> estimated monthly if weekly<br><b>${doses}</b> estimated doses left<br><b>${money(value)}</b> remaining value from ${money(spend)} spend` : (isPenMode() ? 'Add pen cost and doses per pen in Setup.' : 'Add a vial or pen to calculate cost per injection.');
   $('#todayInsights').innerHTML = insights();
   renderChecklist();
