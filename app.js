@@ -195,9 +195,26 @@ function ensureGeminiModelOptions() {
   }
 }
 
+function ensureMealPhotoUi() {
+  if ($('#mealPhotoForm')) return;
+  const grid = $('#food .grid.two-col');
+  if (!grid) return;
+  grid.insertAdjacentHTML('beforeend', `<article class="card meal-snap-card"><h2>Snap meal</h2><p class="muted">Take or upload a meal photo, then review the estimate before saving.</p><form id="mealPhotoForm" class="form-grid single"><label>Meal photo<input name="mealPhoto" type="file" accept="image/*" capture="environment"></label><label>Extra context<textarea name="mealContext" rows="3" placeholder="Example: chicken wrap, small fries, Diet Coke. Mention sauces, oil, restaurant, or anything hidden."></textarea></label><label>Meal type<select name="mealType"><option>Meal</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Drink</option></select></label><button class="primary" type="submit">Estimate from photo</button></form><div id="mealPhotoPreview" class="meal-photo-preview empty">No meal photo selected.</div><div id="mealScanResult" class="result muted">AI estimates are a starting point. Review before saving.</div></article>`);
+  $('#mealPhotoForm').addEventListener('change', async e => {
+    if (e.target.name !== 'mealPhoto') return;
+    const file = e.target.files[0];
+    $('#mealPhotoPreview').innerHTML = file ? `<img src="${await compressPhoto(file)}" alt="Selected meal photo preview">` : 'No meal photo selected.';
+  });
+  $('#mealPhotoForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    await estimateMealFromPhoto(e.target);
+  });
+}
+
 function hydrateSettings() {
   populateGlpSelects();
   refreshThemeLabels();
+  ensureMealPhotoUi();
   const form = $('#settingsForm');
   Object.entries(db.settings).forEach(([key, value]) => {
     const field = form.elements[key];
@@ -538,7 +555,7 @@ function render() {
   renderSiteHistory();
   $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><div class="item-head"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><button onclick="editItem('weights','${w.id}')">Edit</button></div>${w.photo ? `<img class="entry-photo" src="${w.photo}" alt="Progress photo for ${esc(w.date)}">` : ''}<span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
   renderPhotoGallery();
-  $('#foodList').innerHTML = [...db.foods].sort((a, b) => b.date.localeCompare(a.date)).map(f => `<article class="item"><div class="item-head"><b>${esc(f.date)}: ${esc(f.meal)}</b><button onclick="editItem('foods','${f.id}')">Edit</button></div><small>${esc(f.portion)} portion | fatty ${esc(f.fatty)} | spicy ${esc(f.spicy)} | caffeine ${esc(f.caffeine)}</small><p>${esc(f.notes || '')}</p></article>`).join('') || '<div class="empty">No food entries.</div>';
+  $('#foodList').innerHTML = [...db.foods].sort((a, b) => b.date.localeCompare(a.date)).map(renderFoodEntry).join('') || '<div class="empty">No food entries.</div>';
   $('#symptomList').innerHTML = [...db.symptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(s.date)} ${esc(s.time || '')}: ${esc(s.symptom)}</b><button onclick="editItem('symptoms','${s.id}')">Edit</button></div><span>Severity ${esc(s.severity || 0)}/10 | possible trigger: ${esc(s.trigger || '-')}</span><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No symptom entries.</div>';
   $('#digestionList').innerHTML = [...db.digestion].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)} ${esc(d.time || '')}: ${esc(d.movement)}</b><button onclick="editItem('digestion','${d.id}')">Edit</button></div><span>${esc(d.bristol || 'Bristol not set')} | discomfort ${esc(d.discomfort || 0)}/10 | ${esc(d.urgency || 'Normal')}</span><small>Hydration ${esc(d.hydration || '-')} | trigger ${esc(d.trigger || '-')}</small><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No digestion entries.</div>';
   renderDigestionSummary();
@@ -679,6 +696,16 @@ function renderPhotoGallery() {
   $('#photoGallery').innerHTML = photos.length ? photos.map(w => `<figure><img src="${w.photo}" alt="Progress photo ${esc(w.date)}"><figcaption>${esc(w.date)} | ${esc(w.weight)}${esc(w.unit)}</figcaption></figure>`).join('') : '<div class="empty">No progress photos yet.</div>';
 }
 
+function renderFoodEntry(f) {
+  const macroBits = [
+    f.calories ? `${esc(f.calories)} kcal` : '',
+    f.protein ? `P ${esc(f.protein)}g` : '',
+    f.carbs ? `C ${esc(f.carbs)}g` : '',
+    f.fat ? `F ${esc(f.fat)}g` : ''
+  ].filter(Boolean);
+  return `<article class="item food-entry"><div class="item-head"><b>${esc(f.date)}: ${esc(f.meal)}</b><button onclick="editItem('foods','${f.id}')">Edit</button></div>${f.photo ? `<img class="entry-photo meal-entry-photo" src="${f.photo}" alt="Meal photo for ${esc(f.meal)}">` : ''}<div>${macroBits.map(bit => `<span class="pill">${bit}</span>`).join('')}<span class="pill">${esc(f.portion || 'Meal')}</span><span class="pill">fatty ${esc(f.fatty || 'No')}</span><span class="pill">spicy ${esc(f.spicy || 'No')}</span><span class="pill">caffeine ${esc(f.caffeine || 'No')}</span>${f.confidence ? `<span class="pill">${esc(f.confidence)} confidence</span>` : ''}</div>${f.items ? `<small>Detected: ${esc(f.items)}</small>` : ''}${f.source ? `<small>${esc(f.source)}</small>` : ''}<p>${esc(f.notes || '')}</p></article>`;
+}
+
 function renderDigestionSummary() {
   const counts = {};
   db.digestion.forEach(d => {
@@ -765,6 +792,102 @@ function renderGeminiUsage() {
 
 function geminiPrompt(craving, preference) {
   return `You are helping a GLP-1 user choose a practical food swap. Do not give medical advice. Suggest one healthier alternative and a simple recipe. The user wants: ${craving}. Preference: ${preference}. Make it realistic, satisfying, higher protein where suitable, gentle on nausea/reflux where suitable, and avoid moralising language. Return compact JSON only with keys: title, swap, ingredients (array of 5-8 strings), steps (array of 4-6 strings), note.`;
+}
+
+function mealPhotoPrompt(context, mealType) {
+  return `You are estimating a food log for a GLP-1 user from a meal photo. Be useful but cautious: photo calorie estimates are approximate and the user must review before saving. Look for hidden calorie sources like oil, butter, sauces, cheese, nuts, sugar drinks, alcohol, and large portions. Context from user: ${context || 'none'}. Meal type: ${mealType || 'Meal'}. Return compact JSON only with keys: meal, items (array of strings), calories, protein, carbs, fat, fatty (Yes/No), spicy (Yes/No), caffeine (Yes/No), confidence (Low/Medium/High), glpNotes, reviewPrompt. If unsure, choose conservative ranges collapsed to one reasonable midpoint and explain uncertainty in glpNotes.`;
+}
+
+function dataUrlParts(dataUrl) {
+  const [meta, data] = String(dataUrl || '').split(',');
+  return { mimeType: meta.match(/data:(.*?);base64/)?.[1] || 'image/jpeg', data: data || '' };
+}
+
+function fallbackMealEstimate(context, mealType, photo) {
+  const q = String(context || '').toLowerCase();
+  const estimate = { meal: context || `${mealType || 'Meal'} photo`, items: [], calories: 450, protein: 25, carbs: 45, fat: 18, fatty: 'No', spicy: 'No', caffeine: 'No', confidence: photo ? 'Low' : 'Low', glpNotes: 'Basic fallback estimate only. Add details or use AI for a better review.', reviewPrompt: 'Adjust calories, macros and flags before saving.' };
+  if (q.includes('pizza')) Object.assign(estimate, { meal: 'Pizza meal', items: ['pizza'], calories: 700, protein: 28, carbs: 78, fat: 30, fatty: 'Yes' });
+  else if (q.includes('burger')) Object.assign(estimate, { meal: 'Burger meal', items: ['burger'], calories: 750, protein: 35, carbs: 65, fat: 38, fatty: 'Yes' });
+  else if (q.includes('salad')) Object.assign(estimate, { meal: 'Salad meal', items: ['salad', 'dressing'], calories: 420, protein: 25, carbs: 25, fat: 24 });
+  else if (q.includes('coffee')) Object.assign(estimate, { meal: 'Coffee / drink', items: ['coffee'], calories: 80, protein: 4, carbs: 8, fat: 3, caffeine: 'Yes' });
+  if (q.includes('spicy') || q.includes('chilli') || q.includes('curry')) estimate.spicy = 'Yes';
+  if (q.includes('fried') || q.includes('chips') || q.includes('fries') || q.includes('cream') || q.includes('cheese')) estimate.fatty = 'Yes';
+  return estimate;
+}
+
+async function generateGeminiMealPhoto(photoDataUrl, context, mealType) {
+  const apiKey = db.gemini?.apiKey || EMBEDDED_GEMINI_API_KEY;
+  if (!apiKey || db.gemini.useGemini === 'no') throw new Error('Gemini image estimate not configured');
+  const image = dataUrlParts(photoDataUrl);
+  const model = 'gemini-2.5-flash-lite';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: mealPhotoPrompt(context, mealType) }, { inlineData: { mimeType: image.mimeType, data: image.data } }] }],
+      generationConfig: { temperature: 0.25, responseMimeType: 'application/json' }
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Gemini API ${res.status}: ${text.slice(0, 160)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+  if (!text) throw new Error('Gemini returned no meal estimate');
+  const parsed = JSON.parse(text);
+  return { ...parsed, usageMetadata: data.usageMetadata || {} };
+}
+
+function renderMealReview(estimate, photo, source, context, mealType) {
+  $('#mealScanResult').innerHTML = `<form id="mealReviewForm" class="meal-review form-grid">
+    <label>Meal name<input name="meal" value="${esc(estimate.meal || context || mealType || 'Meal')}" required></label>
+    <label>Calories<input name="calories" type="number" min="0" step="1" value="${esc(estimate.calories || '')}"></label>
+    <label>Protein (g)<input name="protein" type="number" min="0" step="1" value="${esc(estimate.protein || '')}"></label>
+    <label>Carbs (g)<input name="carbs" type="number" min="0" step="1" value="${esc(estimate.carbs || '')}"></label>
+    <label>Fat (g)<input name="fat" type="number" min="0" step="1" value="${esc(estimate.fat || '')}"></label>
+    <label>Portion<select name="portion"><option>${esc(mealType || 'Meal')}</option><option>Small</option><option>Normal</option><option>Large</option></select></label>
+    <label>Fatty?<select name="fatty"><option${estimate.fatty === 'No' ? ' selected' : ''}>No</option><option${estimate.fatty === 'Yes' ? ' selected' : ''}>Yes</option></select></label>
+    <label>Spicy?<select name="spicy"><option${estimate.spicy === 'No' ? ' selected' : ''}>No</option><option${estimate.spicy === 'Yes' ? ' selected' : ''}>Yes</option></select></label>
+    <label>Caffeine?<select name="caffeine"><option${estimate.caffeine === 'No' ? ' selected' : ''}>No</option><option${estimate.caffeine === 'Yes' ? ' selected' : ''}>Yes</option></select></label>
+    <label>Confidence<select name="confidence"><option${estimate.confidence === 'Low' ? ' selected' : ''}>Low</option><option${estimate.confidence === 'Medium' ? ' selected' : ''}>Medium</option><option${estimate.confidence === 'High' ? ' selected' : ''}>High</option></select></label>
+    <label class="wide">Detected foods<textarea name="items" rows="2">${esc((estimate.items || []).join(', '))}</textarea></label>
+    <label class="wide">Notes<textarea name="notes" rows="3">${esc([estimate.glpNotes, estimate.reviewPrompt].filter(Boolean).join(' '))}</textarea></label>
+    <input name="photo" type="hidden" value="${esc(photo)}">
+    <input name="source" type="hidden" value="${esc(source)}">
+    <button class="primary">Save reviewed meal</button>
+  </form><p class="fine-print">Review carefully. Photo estimates can miss oils, sauces, drinks, portion size and ingredients hidden under food.</p>`;
+  $('#mealReviewForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const data = formObj(e.target);
+    db.foods.push({ ...data, id: id(), date: today(), mealType, aiReviewed: 'Yes' });
+    $('#mealPhotoForm').reset();
+    $('#mealPhotoPreview').innerHTML = 'No meal photo selected.';
+    $('#mealScanResult').textContent = 'Meal saved. Snap another meal whenever you are ready.';
+    feedback('save');
+    save();
+  });
+}
+
+async function estimateMealFromPhoto(form) {
+  const file = form.elements.mealPhoto.files[0];
+  const context = form.elements.mealContext.value.trim();
+  const mealType = form.elements.mealType.value;
+  $('#mealScanResult').textContent = 'Reviewing meal photo...';
+  let photo = '';
+  if (file) photo = await compressPhoto(file);
+  try {
+    if (!photo) throw new Error('No photo selected');
+    const estimate = await generateGeminiMealPhoto(photo, context, mealType);
+    const cost = recordGeminiUsage('gemini-2.5-flash-lite', estimate.usageMetadata);
+    const { usageMetadata, ...cleanEstimate } = estimate;
+    $('#geminiStatus').textContent = `Meal photo estimated with Gemini. Raw API estimate: ${usd(cost.costUsd)}.`;
+    renderMealReview(cleanEstimate, photo, 'Gemini photo estimate', context, mealType);
+  } catch (err) {
+    const estimate = fallbackMealEstimate(context, mealType, photo);
+    estimate.glpNotes = `${estimate.glpNotes} AI was not used: ${String(err.message || err).slice(0, 90)}.`;
+    renderMealReview(estimate, photo, 'Basic fallback estimate', context, mealType);
+  }
 }
 
 async function generateGeminiMeal(craving, preference) {
