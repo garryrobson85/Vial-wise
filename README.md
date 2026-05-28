@@ -8,7 +8,8 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - First-load onboarding for name, style, start weight, GLP-1, current dose and pen/vial mode
 - Mobile bottom navigation with Settings hub instead of a long top menu
 - Boutique theme options based on user preference
-- Stronger full-interface theme palettes
+- Soft glow/neumorphic interface skin with Rose, Aqua, Plum and Slate colour choices
+- Animated page transitions, tactile pressed states and richer click/save feedback sounds
 - Pre-filled pen cost per dose and doses-per-pen tracking
 - Mode-specific setup: pen users see pen cost, vial users are guided into vial inventory
 - GLP-1 onboarding for Semaglutide, Tirzepatide and Retatrutide
@@ -24,6 +25,7 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - Peptide-neutral reconstitution calculator with mg/mcg/IU, ml/U-100 units, syringe sizing, rounding, doses per vial and draw warnings
 - Weight, food, symptom, mood and daily check-in logs
 - Optional local progress photos in the weight tracker with mobile camera/upload support
+- Today focus shows first-versus-latest progress photos on days without scheduled injections
 - Digestion tracker for constipation, diarrhoea, frequency, Bristol type, hydration and discomfort
 - Event-based toilet visit logging with automatic daily frequency summary
 - Mobile quick-log actions on Today

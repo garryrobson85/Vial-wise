@@ -114,21 +114,26 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 function feedback(kind = 'tap') {
   if ((db.settings.feedback || 'on') === 'off') return;
-  if (navigator.vibrate) navigator.vibrate(kind === 'save' ? [18, 25, 18] : 12);
+  if (navigator.vibrate) navigator.vibrate(kind === 'save' ? [18, 24, 14] : [8, 12]);
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = feedback.ctx || (feedback.ctx = new AudioCtx());
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = kind === 'save' ? 'sine' : 'triangle';
-    osc.frequency.value = kind === 'save' ? 740 : 520;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(kind === 'save' ? 0.035 : 0.02, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (kind === 'save' ? 0.14 : 0.07));
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + (kind === 'save' ? 0.16 : 0.08));
+    const notes = kind === 'save'
+      ? [{ f: 660, t: 0, d: 0.07 }, { f: 990, t: 0.055, d: 0.11 }]
+      : [{ f: 520, t: 0, d: 0.045 }, { f: 780, t: 0.035, d: 0.045 }];
+    notes.forEach(note => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = kind === 'save' ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(note.f, ctx.currentTime + note.t);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + note.t);
+      gain.gain.exponentialRampToValueAtTime(kind === 'save' ? 0.028 : 0.014, ctx.currentTime + note.t + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + note.t + note.d);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + note.t);
+      osc.stop(ctx.currentTime + note.t + note.d + 0.02);
+    });
   } catch {}
 }
 
@@ -170,6 +175,15 @@ function populateDoseSelect(glpKey, selected) {
   if (selected && [...select.options].some(o => o.value === String(selected))) select.value = String(selected);
 }
 
+function refreshThemeLabels() {
+  const labels = { rose: 'Rose glow', teal: 'Aqua glow', plum: 'Plum glow', slate: 'Slate glow' };
+  $$('select[name="theme"]').forEach(select => {
+    [...select.options].forEach(option => {
+      option.textContent = labels[option.value] || option.textContent;
+    });
+  });
+}
+
 function ensureGeminiModelOptions() {
   const select = $('#geminiForm')?.elements.geminiModel;
   if (!select) return;
@@ -183,6 +197,7 @@ function ensureGeminiModelOptions() {
 
 function hydrateSettings() {
   populateGlpSelects();
+  refreshThemeLabels();
   const form = $('#settingsForm');
   Object.entries(db.settings).forEach(([key, value]) => {
     const field = form.elements[key];
@@ -457,7 +472,7 @@ function renderToday(spend, value, doses, cost) {
   $('#todaySub').textContent = due.length ? `${due.length} schedule entr${due.length === 1 ? 'y' : 'ies'} due today.` : 'No injection scheduled today.';
   $('#heroCost').textContent = `${money(cost)} / injection`;
   $('#heroNext').textContent = next ? `Next: ${next.date} ${next.time || ''}` : 'Next: not scheduled';
-  $('#todayBox').innerHTML = due.length ? due.map(s => `<div class="item"><b>${esc(vialName(s.vialId))}</b><span>${esc(s.time || '')} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || 'site not set')} | ${esc(s.status)}</span></div>`).join('') : 'No schedule entries due today.';
+  $('#todayBox').innerHTML = due.length ? due.map(s => `<div class="item"><b>${esc(vialName(s.vialId))}</b><span>${esc(s.time || '')} | ${esc(s.amount || s.amountMcg || '-')} ${esc(s.amountUnit || (s.amountMcg ? 'mcg' : 'mg'))} | ${esc(s.site || 'site not set')} | ${esc(s.status)}</span></div>`).join('') : renderProgressFocus();
   const prompts = [
     { view: 'schedule', text: `Dose: ${doseText(dose.amount, dose.unit)} ${glpName()}` },
     { view: 'sites', text: nextSiteSuggestion() },
@@ -468,6 +483,20 @@ function renderToday(spend, value, doses, cost) {
   $('#costSnapshot').innerHTML = cost ? `<b>${money(cost)}</b> estimated per injection<br><b>${money(cost * 4.33)}</b> estimated monthly if weekly<br><b>${doses}</b> estimated doses left<br><b>${money(value)}</b> remaining value from ${money(spend)} spend` : (isPenMode() ? 'Add pen cost and doses per pen in Setup.' : 'Add a vial or pen to calculate cost per injection.');
   $('#todayInsights').innerHTML = insights();
   renderChecklist();
+}
+
+function renderProgressFocus() {
+  const photos = [...db.weights].filter(w => w.photo).sort((a, b) => a.date.localeCompare(b.date));
+  if (photos.length >= 2) {
+    const first = photos[0];
+    const latest = photos[photos.length - 1];
+    return `<div class="progress-focus"><figure><span>First photo</span><img src="${first.photo}" alt="First uploaded progress photo"><figcaption>${esc(first.date)} | ${esc(first.weight || '-')} ${esc(first.unit || db.settings.units || '')}</figcaption></figure><figure><span>Latest photo</span><img src="${latest.photo}" alt="Latest uploaded progress photo"><figcaption>${esc(latest.date)} | ${esc(latest.weight || '-')} ${esc(latest.unit || db.settings.units || '')}</figcaption></figure></div>`;
+  }
+  if (photos.length === 1) {
+    const latest = photos[0];
+    return `<div class="progress-focus single"><figure><span>Latest photo</span><img src="${latest.photo}" alt="Latest uploaded progress photo"><figcaption>${esc(latest.date)} | ${esc(latest.weight || '-')} ${esc(latest.unit || db.settings.units || '')}</figcaption></figure><div class="progress-note"><b>No dose scheduled today.</b><p>Add another progress photo later to compare first versus latest here.</p><button data-jump="weight" type="button">Add progress photo</button></div></div>`;
+  }
+  return '<div class="progress-note"><b>No dose scheduled today.</b><p>Upload progress photos in Weight to make Today show your first versus latest picture on quiet days.</p><button data-jump="weight" type="button">Add progress photo</button></div>';
 }
 
 function renderChecklist() {
