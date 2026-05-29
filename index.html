@@ -80,7 +80,7 @@
 
   <main class="main-content">
     <header class="topbar">
-      <div><p class="eyebrow">Local private tracker</p><h1 id="pageTitle">Today</h1></div>
+      <div><p class="eyebrow" id="nextInjectionLabel">Next injection: not scheduled</p><h1 id="pageTitle">Today</h1></div>
       <div class="top-actions"><button id="settingsBtn" class="ghost" type="button">Settings</button></div>
     </header>
     <section class="notice"><b>Designed for real daily use:</b> use Pre-filled pen mode for simple pen cost and dose tracking, or Vials mode for fully customised vial, reconstitution and peptide logs.</section>
@@ -136,7 +136,7 @@
 
     <section id="peptides" class="view"><div class="grid two-col"><article class="card"><h2>Other peptide tracker</h2><p class="muted">For user-entered tracking only. VialWise does not suggest peptides, doses, timing or treatment.</p><form id="peptideForm" class="form-grid single"><label>Name<input name="name" required placeholder="Peptide name"></label><label>Category<input name="category" placeholder="Recovery, skin, sleep, wellness"></label><label>Amount<input name="amount" type="number" step="0.001" min="0"></label><label>Unit<select name="unit"><option value="mg">mg</option><option value="mcg">mcg</option><option value="units">units</option></select></label><label>Frequency<input name="frequency" placeholder="User-entered schedule"></label><label>Start date<input name="startDate" type="date"></label><label>Source / batch<input name="source"></label><label>Storage<input name="storage"></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Personal notes, tolerance, questions for a professional"></textarea></label><button class="primary">Save peptide</button></form></article><article class="card"><h2>Peptide symptom log</h2><form id="peptideSymptomForm" class="form-grid single"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time"></label><label>Peptide(s) used<input name="peptides" placeholder="Example: BPC-157, TB-500"></label><label>Symptom / observation<input name="symptom" required placeholder="Sleep, nausea, flushing, headache, mood"></label><label>Severity 0-10<input name="severity" type="number" min="0" max="10" step="1"></label><label>Timing<select name="timing"><option>Same day</option><option>Within 2 hours</option><option>Within 6 hours</option><option>Next day</option><option>Unsure</option></select></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Other peptides, GLP-1 dose, food, alcohol, exercise, sleep, anything that may matter"></textarea></label><button class="primary">Save peptide symptom</button></form><p class="fine-print">Pattern spotting only. This does not diagnose interactions or decide whether a combination is safe.</p></article></div><article class="card"><h2>Possible peptide patterns</h2><div id="peptideInsights" class="muted">Add peptide symptom entries to see repeated co-use notes.</div></article><div id="peptideList" class="list"></div><div id="peptideSymptomList" class="list"></div></section>
 
-    <section id="export" class="view"><article class="card"><h2>Data export</h2><p>Data is stored locally in this browser. Export before clearing data or changing devices.</p><div class="button-row"><button id="exportJson" class="primary">Download JSON backup</button><button id="exportCsv" class="ghost">Download CSV summary</button><label class="import-label">Restore JSON<input id="importJson" type="file" accept="application/json"></label><button id="testBackup" class="ghost" type="button">Test backup health</button></div><div id="backupHealth" class="result muted">Run a backup health test before relying on exported data.</div></article></section>
+    <section id="export" class="view"><article class="card"><h2>Data export</h2><p>Data auto-saves in this browser. Export before clearing data, changing devices or using a different browser.</p><div class="button-row"><button id="exportJson" class="primary">Download JSON backup</button><button id="exportCsv" class="ghost">Download CSV summary</button><label class="import-label">Restore JSON<input id="importJson" type="file" accept="application/json"></label><button id="testBackup" class="ghost" type="button">Test backup health</button></div><div id="storageStatus" class="result muted">Checking browser storage...</div><div id="backupHealth" class="result muted">Run a backup health test before relying on exported data.</div></article></section>
 </main>
 </div>
 <nav class="bottom-nav" aria-label="Mobile navigation">
@@ -158,6 +158,8 @@
   <button data-view="setup">Settings</button>
   <button data-view="export">Export / Backup</button>
 </div>
+<script>window.VIALWISE_CONFIG = window.VIALWISE_CONFIG || { geminiApiKey: '' };</script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

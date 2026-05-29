@@ -41,6 +41,19 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - Peptide symptom log with repeated co-use pattern notes
 - Optional click/save sounds and mobile vibration feedback
 - JSON backup, JSON restore and CSV summary export
+- Auto-save to browser storage plus IndexedDB for more durable reopen behaviour
+
+## Temporary Gemini key
+
+For private testing, put your Gemini API key in `config.js`:
+
+```js
+window.VIALWISE_CONFIG = {
+  geminiApiKey: 'YOUR_KEY_HERE'
+};
+```
+
+Do not publish a public build with a real key in `config.js`. Use a backend before public launch.
 
 ## Deploy on GitHub Pages
 

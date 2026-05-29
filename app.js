@@ -1,6 +1,6 @@
 const KEY = 'vialwise_v7';
 const OLD_KEYS = ['vialwise_v6', 'vialwise_v5'];
-const EMBEDDED_GEMINI_API_KEY = ''; // Temporary testing only. Do not publish a real key in a public app.
+const EMBEDDED_GEMINI_API_KEY = window.VIALWISE_CONFIG?.geminiApiKey || ''; // Temporary testing only. Do not publish a real key in a public app.
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -78,9 +78,7 @@ const defaults = {
   compounds: []
 };
 
-function loadDb() {
-  const raw = localStorage.getItem(KEY) || OLD_KEYS.map(k => localStorage.getItem(k)).find(Boolean);
-  const loaded = raw ? JSON.parse(raw) : {};
+function normaliseDb(loaded = {}) {
   return {
     ...structuredClone(defaults),
     ...loaded,
@@ -97,10 +95,93 @@ function loadDb() {
   };
 }
 
+function loadDb() {
+  let loaded = {};
+  try {
+    const raw = localStorage.getItem(KEY) || OLD_KEYS.map(k => localStorage.getItem(k)).find(Boolean);
+    loaded = raw ? JSON.parse(raw) : {};
+  } catch (err) {
+    console.warn('VialWise could not read saved browser data:', err);
+  }
+  return normaliseDb(loaded);
+}
+
 let db = loadDb();
 
+function storageBytes() {
+  try {
+    return new Blob([JSON.stringify(db)]).size;
+  } catch {
+    return 0;
+  }
+}
+
+function updateStorageStatus(message = '') {
+  const box = $('#storageStatus') || $('#backupHealth') || $('#settingsSaved');
+  if (!box) return;
+  const mb = (storageBytes() / 1024 / 1024).toFixed(2);
+  box.innerHTML = message || `Saved in this browser. Current local data size: ${mb} MB.`;
+}
+
+function idbStore() {
+  if (!('indexedDB' in window)) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const request = indexedDB.open('vialwise_store', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('records');
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+  });
+}
+
+async function idbSet(key, value) {
+  const database = await idbStore();
+  if (!database) return false;
+  return new Promise(resolve => {
+    const tx = database.transaction('records', 'readwrite');
+    tx.objectStore('records').put(value, key);
+    tx.oncomplete = () => {
+      database.close();
+      resolve(true);
+    };
+    tx.onerror = () => {
+      database.close();
+      resolve(false);
+    };
+  });
+}
+
+async function idbGet(key) {
+  const database = await idbStore();
+  if (!database) return null;
+  return new Promise(resolve => {
+    const tx = database.transaction('records', 'readonly');
+    const request = tx.objectStore('records').get(key);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => resolve(null);
+    tx.oncomplete = () => database.close();
+  });
+}
+
+function persistDb() {
+  try {
+    db.updatedAt = new Date().toISOString();
+    localStorage.setItem(KEY, JSON.stringify(db));
+    idbSet(KEY, db);
+    updateStorageStatus();
+    return true;
+  } catch (err) {
+    db.updatedAt = new Date().toISOString();
+    idbSet(KEY, db);
+    const message = 'Browser storage is full or blocked. Export JSON now, then remove some photos or use this app in the same normal browser profile.';
+    console.warn('VialWise save failed:', err);
+    updateStorageStatus(message);
+    alert(message);
+    return false;
+  }
+}
+
 const save = () => {
-  localStorage.setItem(KEY, JSON.stringify(db));
+  persistDb();
   render();
 };
 const id = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -211,10 +292,23 @@ function ensureMealPhotoUi() {
   });
 }
 
+function applyFoodTestingMode() {
+  const embeddedAi = !!EMBEDDED_GEMINI_API_KEY;
+  const oldFoodCards = $$('#food .grid.two-col > .card:not(.meal-snap-card)');
+  oldFoodCards.forEach(card => card.classList.toggle('hidden', embeddedAi));
+  const geminiCard = $('#geminiForm')?.closest('.card');
+  if (geminiCard && embeddedAi) {
+    $('#geminiForm')?.classList.add('hidden');
+    geminiCard.querySelector('details')?.classList.add('hidden');
+    if ($('#geminiStatus')) $('#geminiStatus').textContent = 'AI meal estimates are enabled for this test build.';
+  }
+}
+
 function hydrateSettings() {
   populateGlpSelects();
   refreshThemeLabels();
   ensureMealPhotoUi();
+  applyFoodTestingMode();
   const form = $('#settingsForm');
   Object.entries(db.settings).forEach(([key, value]) => {
     const field = form.elements[key];
@@ -255,6 +349,22 @@ document.addEventListener('click', e => {
 
 function pageTitle() {
   $('#pageTitle').textContent = $('.tab.active')?.textContent || 'Today';
+  updateNextInjectionLabel();
+}
+
+function formatScheduleLabel(entry) {
+  if (!entry) return 'Next injection: not scheduled';
+  const date = new Date(`${entry.date}T${entry.time || '00:00'}`);
+  const when = Number.isNaN(date.getTime())
+    ? entry.date
+    : date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return `Next injection: ${when}${entry.time ? ` at ${entry.time}` : ''}`;
+}
+
+function updateNextInjectionLabel() {
+  const label = $('#nextInjectionLabel');
+  if (!label) return;
+  label.textContent = formatScheduleLabel(nextSchedule());
 }
 
 function applyTheme() {
@@ -545,6 +655,7 @@ function render() {
   $('#statValue').textContent = money(value);
   $('#statDoses').textContent = doses;
   $('#statFood').textContent = db.foods.length;
+  updateNextInjectionLabel();
   renderToday(spend, value, doses, cost);
 
   $('#scheduleVial').innerHTML = `<option value="current-glp1">Current GLP-1: ${esc(glpName())} ${esc(doseText())}${isPenMode() ? ' pen' : ''}</option>` + (isPenMode() ? '' : '<option value="">Choose saved vial / pen</option>' + db.vials.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join(''));
@@ -1047,7 +1158,7 @@ $('#onboardingForm').addEventListener('submit', e => {
   if (settingsData.startWeight) {
     db.weights.unshift({ id: id(), date: today(), weight: settingsData.startWeight, unit: settingsData.units || 'kg', appetite: 'Normal', notes: 'Starting weight from onboarding' });
   }
-  localStorage.setItem(KEY, JSON.stringify(db));
+  persistDb();
   hydrateSettings();
   switchView('today');
   feedback('save');
@@ -1058,7 +1169,7 @@ $('#settingsForm').addEventListener('submit', e => {
   e.preventDefault();
   db.settings = { ...db.settings, ...formObj(e.target) };
   db.settings.onboarded = true;
-  localStorage.setItem(KEY, JSON.stringify(db));
+  persistDb();
   $('#settingsSaved').textContent = 'Saved';
   setTimeout(() => $('#settingsSaved').textContent = '', 1800);
   hydrateSettings();
@@ -1238,7 +1349,7 @@ function download(name, text, type = 'application/json') {
 
 $('#exportJson').addEventListener('click', () => {
   db.lastBackupTest = new Date().toISOString();
-  localStorage.setItem(KEY, JSON.stringify(db));
+  persistDb();
   render();
   download('vialwise-backup.json', JSON.stringify(db, null, 2));
 });
@@ -1274,8 +1385,8 @@ $('#importJson').addEventListener('change', async e => {
   if (!file) return;
   try {
     const imported = JSON.parse(await file.text());
-    db = { ...structuredClone(defaults), ...imported, settings: { ...defaults.settings, ...(imported.settings || {}) } };
-    localStorage.setItem(KEY, JSON.stringify(db));
+    db = normaliseDb(imported);
+    persistDb();
     hydrateSettings();
     render();
     alert('Backup restored.');
@@ -1304,10 +1415,33 @@ $('#clearBtn').addEventListener('click', () => {
   if (confirm('Clear all local VialWise data?')) {
     localStorage.removeItem(KEY);
     OLD_KEYS.forEach(k => localStorage.removeItem(k));
+    idbSet(KEY, null);
     location.reload();
   }
 });
 
+async function restoreDurableDb() {
+  const stored = await idbGet(KEY);
+  if (!stored) {
+    updateStorageStatus();
+    return;
+  }
+  const durable = normaliseDb(stored);
+  const durableTime = Date.parse(durable.updatedAt || '');
+  const currentTime = Date.parse(db.updatedAt || '');
+  const currentHasData = db.settings?.onboarded || db.schedule.length || db.foods.length || db.weights.length || db.vials.length;
+  if (!currentHasData || (durableTime && durableTime > currentTime)) {
+    db = durable;
+    hydrateSettings();
+    setTodayDefaults();
+    render();
+    updateStorageStatus('Restored saved data from this browser.');
+  } else {
+    updateStorageStatus();
+  }
+}
+
 hydrateSettings();
 setTodayDefaults();
 render();
+restoreDurableDb();
