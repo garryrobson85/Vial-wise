@@ -79,7 +79,7 @@ const defaults = {
 };
 
 function normaliseDb(loaded = {}) {
-  return {
+  const data = {
     ...structuredClone(defaults),
     ...loaded,
     settings: { ...defaults.settings, ...(loaded.settings || {}) },
@@ -93,6 +93,9 @@ function normaliseDb(loaded = {}) {
     geminiUsage: loaded.geminiUsage || [],
     foodIdeas: loaded.foodIdeas || []
   };
+  if (data.settings.units === 'lb') data.settings.units = 'st';
+  data.weights = (data.weights || []).map(weight => ({ ...weight, unit: weight.unit === 'lb' ? 'st' : weight.unit }));
+  return data;
 }
 
 function loadDb() {
