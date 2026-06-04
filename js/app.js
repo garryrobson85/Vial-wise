@@ -1,6 +1,8 @@
 const KEY = 'vialwise_v7';
 const OLD_KEYS = ['vialwise_v6', 'vialwise_v5'];
-const EMBEDDED_GEMINI_API_KEY = window.VIALWISE_CONFIG?.geminiApiKey || ''; // Temporary testing only. Do not publish a real key in a public app.
+const AI_WORKER_URL = (window.VIALWISE_CONFIG?.aiWorkerUrl || '').replace(/\/$/, '');
+const AI_MODEL = 'claude-sonnet-4-6';
+const EMBEDDED_GEMINI_API_KEY = ''; // Legacy direct browser keys are disabled. Use the private Worker instead.
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -35,6 +37,7 @@ const siteAliases = {
 };
 
 const geminiPricesUsd = {
+  'claude-sonnet-4-6': { input: 3.00, output: 15.00 },
   'gemini-2.0-flash': { input: 0.10, output: 0.40 },
   'gemini-2.5-flash': { input: 0.30, output: 2.50 },
   'gemini-2.5-pro': { input: 1.25, output: 10.00 },
@@ -73,7 +76,7 @@ const defaults = {
   peptideSymptoms: [],
   foodIdeas: [],
   gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes' },
-  geminiFreeDailyRequests: '1000',
+  geminiFreeDailyRequests: '0',
   geminiUsage: [],
   compounds: []
 };
@@ -89,7 +92,7 @@ function normaliseDb(loaded = {}) {
     peptides: loaded.peptides || loaded.compounds || [],
     peptideSymptoms: loaded.peptideSymptoms || [],
     gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes', ...(loaded.gemini || {}) },
-    geminiFreeDailyRequests: loaded.geminiFreeDailyRequests || '1000',
+    geminiFreeDailyRequests: loaded.geminiFreeDailyRequests || '0',
     geminiUsage: loaded.geminiUsage || [],
     foodIdeas: loaded.foodIdeas || []
   };
@@ -271,11 +274,11 @@ function refreshThemeLabels() {
 function ensureGeminiModelOptions() {
   const select = $('#geminiForm')?.elements.geminiModel;
   if (!select) return;
-  select.innerHTML = '<option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>';
-  select.value = 'gemini-2.5-flash-lite';
+  select.innerHTML = '<option value="claude-sonnet-4-6">Claude Sonnet</option>';
+  select.value = 'claude-sonnet-4-6';
   select.closest('label')?.classList.add('hidden');
   if (!$('#geminiFreeDailyRequests')) {
-    select.closest('label')?.insertAdjacentHTML('afterend', '<label>Free requests/day<input id="geminiFreeDailyRequests" name="geminiFreeDailyRequests" type="number" min="0" step="1" value="1000"></label>');
+    select.closest('label')?.insertAdjacentHTML('afterend', '<label>Free requests/day<input id="geminiFreeDailyRequests" name="geminiFreeDailyRequests" type="number" min="0" step="1" value="0"></label>');
   }
 }
 
@@ -296,14 +299,14 @@ function ensureMealPhotoUi() {
 }
 
 function applyFoodTestingMode() {
-  const embeddedAi = !!EMBEDDED_GEMINI_API_KEY;
-  const oldFoodCards = $$('#food .grid.two-col > .card:not(.meal-snap-card)');
-  oldFoodCards.forEach(card => card.classList.toggle('hidden', embeddedAi));
+  $('#foodForm')?.closest('.card')?.classList.add('hidden');
+  $('#mealIdeaForm')?.closest('.card')?.classList.remove('hidden');
+  $('.meal-snap-card')?.classList.remove('hidden');
   const geminiCard = $('#geminiForm')?.closest('.card');
-  if (geminiCard && embeddedAi) {
+  if (geminiCard) {
     $('#geminiForm')?.classList.add('hidden');
     geminiCard.querySelector('details')?.classList.add('hidden');
-    if ($('#geminiStatus')) $('#geminiStatus').textContent = 'AI meal estimates are enabled for this test build.';
+    if ($('#geminiStatus')) $('#geminiStatus').textContent = AI_WORKER_URL ? 'AI meal estimates and food swaps are routed through the private Cloudflare Worker.' : 'AI Worker not configured yet. Built-in food ideas still work without a key.';
   }
 }
 
@@ -329,10 +332,10 @@ function hydrateSettings() {
   if (geminiForm) {
     ensureGeminiModelOptions();
     geminiForm.elements.geminiApiKey.value = db.gemini?.apiKey || '';
-    db.gemini.model = 'gemini-2.5-flash-lite';
-    geminiForm.elements.geminiModel.value = 'gemini-2.5-flash-lite';
+    db.gemini.model = AI_MODEL;
+    geminiForm.elements.geminiModel.value = AI_MODEL;
     geminiForm.elements.useGemini.value = db.gemini?.useGemini || 'yes';
-    if (geminiForm.elements.geminiFreeDailyRequests) geminiForm.elements.geminiFreeDailyRequests.value = db.geminiFreeDailyRequests || '1000';
+    if (geminiForm.elements.geminiFreeDailyRequests) geminiForm.elements.geminiFreeDailyRequests.value = db.geminiFreeDailyRequests || '0';
   }
   applyMode();
   applyTheme();
@@ -854,7 +857,7 @@ function renderMealIdea(idea, source = 'Built-in fallback') {
 }
 
 function geminiUsageCost(model, usage = {}) {
-  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash-lite'];
+  const prices = geminiPricesUsd[model] || geminiPricesUsd[AI_MODEL] || geminiPricesUsd['gemini-2.5-flash-lite'];
   const promptTokens = num(usage.promptTokenCount);
   const outputTokens = Math.max(num(usage.candidatesTokenCount) + num(usage.thoughtsTokenCount), num(usage.totalTokenCount) - promptTokens, 0);
   const costUsd = (promptTokens / 1000000) * prices.input + (outputTokens / 1000000) * prices.output;
@@ -874,7 +877,7 @@ function sameUtcDay(a, b = new Date()) {
 }
 
 function geminiBillingSummary() {
-  const freeDaily = Math.max(0, Math.floor(num(db.geminiFreeDailyRequests) || 0));
+  const freeDaily = AI_WORKER_URL ? 0 : Math.max(0, Math.floor(num(db.geminiFreeDailyRequests) || 0));
   const todayRows = db.geminiUsage.filter(row => sameUtcDay(row.date));
   const billableToday = todayRows.slice(freeDaily);
   return {
@@ -897,11 +900,11 @@ function renderGeminiUsage() {
   if (!box) return;
   const last = db.geminiUsage[0];
   const calls = db.geminiUsage.length;
-  const model = 'gemini-2.5-flash-lite';
-  const prices = geminiPricesUsd[model] || geminiPricesUsd['gemini-2.5-flash-lite'];
-  const keyMode = db.gemini?.apiKey ? 'User key saved in this browser.' : (EMBEDDED_GEMINI_API_KEY ? 'Temporary embedded key active.' : 'No key active; fallback suggestions will be used.');
+  const model = AI_WORKER_URL ? AI_MODEL : 'Built-in fallback';
+  const prices = geminiPricesUsd[AI_MODEL];
+  const keyMode = AI_WORKER_URL ? 'Private Worker active. No AI key is stored in the app or browser.' : 'No Worker active; fallback suggestions will be used.';
   const billing = geminiBillingSummary();
-  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last raw cost</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Free left today</span><b>${billing.freeLeft}/${billing.freeDaily}</b></div><div><span>Billable today</span><b>${usd(billing.billableTodayCost)}</b></div><div><span>Tracked raw total</span><b>${usd(billing.trackedCost)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">${esc(keyMode)} Free allowance is estimated by request count; each food suggestion is one request. Google bills in USD and final billing may vary by tier, model, free quota and taxes.</p>`;
+  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last raw cost</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Free left today</span><b>${billing.freeLeft}/${billing.freeDaily}</b></div><div><span>Billable today</span><b>${usd(billing.billableTodayCost)}</b></div><div><span>Tracked raw total</span><b>${usd(billing.trackedCost)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">${esc(keyMode)} Anthropic usage is estimated from returned token counts and may differ from the final invoice after credits, taxes, or provider-side billing rules.</p>`;
 }
 
 function geminiPrompt(craving, preference) {
@@ -917,6 +920,24 @@ function dataUrlParts(dataUrl) {
   return { mimeType: meta.match(/data:(.*?);base64/)?.[1] || 'image/jpeg', data: data || '' };
 }
 
+async function callAiWorker(path, payload) {
+  if (!AI_WORKER_URL) throw new Error('AI Worker not configured');
+  const res = await fetch(`${AI_WORKER_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`AI Worker returned unreadable data: ${text.slice(0, 120)}`);
+  }
+  if (!res.ok) throw new Error(data.error || data.message || `AI Worker ${res.status}`);
+  return data;
+}
+
 function fallbackMealEstimate(context, mealType, photo) {
   const q = String(context || '').toLowerCase();
   const estimate = { meal: context || `${mealType || 'Meal'} photo`, items: [], calories: 450, protein: 25, carbs: 45, fat: 18, fatty: 'No', spicy: 'No', caffeine: 'No', confidence: photo ? 'Low' : 'Low', glpNotes: 'Basic fallback estimate only. Add details or use AI for a better review.', reviewPrompt: 'Adjust calories, macros and flags before saving.' };
@@ -930,27 +951,10 @@ function fallbackMealEstimate(context, mealType, photo) {
 }
 
 async function generateGeminiMealPhoto(photoDataUrl, context, mealType) {
-  const apiKey = db.gemini?.apiKey || EMBEDDED_GEMINI_API_KEY;
-  if (!apiKey || db.gemini.useGemini === 'no') throw new Error('Gemini image estimate not configured');
   const image = dataUrlParts(photoDataUrl);
-  const model = 'gemini-2.5-flash-lite';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: mealPhotoPrompt(context, mealType) }, { inlineData: { mimeType: image.mimeType, data: image.data } }] }],
-      generationConfig: { temperature: 0.25, responseMimeType: 'application/json' }
-    })
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Gemini API ${res.status}: ${text.slice(0, 160)}`);
-  }
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
-  if (!text) throw new Error('Gemini returned no meal estimate');
-  const parsed = JSON.parse(text);
-  return { ...parsed, usageMetadata: data.usageMetadata || {} };
+  if (!image.data) throw new Error('No meal photo selected');
+  const data = await callAiWorker('/meal-photo', { photo: image, context, mealType });
+  return { ...data, usageMetadata: data.usageMetadata || {} };
 }
 
 function renderMealReview(estimate, photo, source, context, mealType) {
@@ -993,10 +997,10 @@ async function estimateMealFromPhoto(form) {
   try {
     if (!photo) throw new Error('No photo selected');
     const estimate = await generateGeminiMealPhoto(photo, context, mealType);
-    const cost = recordGeminiUsage('gemini-2.5-flash-lite', estimate.usageMetadata);
+    const cost = recordGeminiUsage(AI_MODEL, estimate.usageMetadata);
     const { usageMetadata, ...cleanEstimate } = estimate;
-    $('#geminiStatus').textContent = `Meal photo estimated with Gemini. Raw API estimate: ${usd(cost.costUsd)}.`;
-    renderMealReview(cleanEstimate, photo, 'Gemini photo estimate', context, mealType);
+    $('#geminiStatus').textContent = `Meal photo estimated with Claude Sonnet via Worker. Raw API estimate: ${usd(cost.costUsd)}.`;
+    renderMealReview(cleanEstimate, photo, 'Claude Sonnet photo estimate', context, mealType);
   } catch (err) {
     const estimate = fallbackMealEstimate(context, mealType, photo);
     estimate.glpNotes = `${estimate.glpNotes} AI was not used: ${String(err.message || err).slice(0, 90)}.`;
@@ -1005,27 +1009,9 @@ async function estimateMealFromPhoto(form) {
 }
 
 async function generateGeminiMeal(craving, preference) {
-  const apiKey = db.gemini?.apiKey || EMBEDDED_GEMINI_API_KEY;
-  if (!apiKey || db.gemini.useGemini === 'no') throw new Error('Gemini not configured');
-  const model = 'gemini-2.5-flash-lite';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: geminiPrompt(craving, preference) }] }],
-      generationConfig: { temperature: 0.75, responseMimeType: 'application/json' }
-    })
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Gemini API ${res.status}: ${text.slice(0, 160)}`);
-  }
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
-  if (!text) throw new Error('Gemini returned no text');
-  const parsed = JSON.parse(text);
-  if (!parsed.title || !parsed.ingredients || !parsed.steps) throw new Error('Gemini response was incomplete');
-  return { title: parsed.title, swap: parsed.swap || parsed.note || '', ingredients: parsed.ingredients, steps: parsed.steps, usageMetadata: data.usageMetadata || {} };
+  const data = await callAiWorker('/food-swap', { craving, preference });
+  if (!data.title || !data.ingredients || !data.steps) throw new Error('AI response was incomplete');
+  return { title: data.title, swap: data.swap || data.note || '', ingredients: data.ingredients, steps: data.steps, usageMetadata: data.usageMetadata || {} };
 }
 
 window.del = (key, itemId) => {
@@ -1226,18 +1212,18 @@ async function makeMealIdea(data) {
   $('#mealIdeaResult').textContent = 'Building suggestion...';
   try {
     const idea = await generateGeminiMeal(data.craving, data.preference);
-    const cost = recordGeminiUsage('gemini-2.5-flash-lite', idea.usageMetadata);
+    const cost = recordGeminiUsage(AI_MODEL, idea.usageMetadata);
     const { usageMetadata, ...savedIdea } = idea;
-    db.foodIdeas.push({ ...data, ...savedIdea, id: id(), date: today(), source: 'Gemini', costUsd: cost.costUsd });
+    db.foodIdeas.push({ ...data, ...savedIdea, id: id(), date: today(), source: 'Claude Sonnet via Worker', costUsd: cost.costUsd });
     const billing = geminiBillingSummary();
     const costLabel = billing.usedToday <= billing.freeDaily ? 'covered by free allowance' : `billable estimate ${usd(cost.costUsd)}`;
-    renderMealIdea(savedIdea, `Gemini 2.5 Flash-Lite | ${costLabel}`);
-    $('#geminiStatus').textContent = `Gemini generated the latest suggestion: ${costLabel}.`;
+    renderMealIdea(savedIdea, `Claude Sonnet via Worker | ${costLabel}`);
+    $('#geminiStatus').textContent = `AI Worker generated the latest suggestion: ${costLabel}.`;
   } catch (err) {
     const idea = suggestMeal(data.craving, data.preference);
     db.foodIdeas.push({ ...data, ...idea, id: id(), date: today(), source: 'Built-in fallback', fallbackReason: String(err.message || err) });
     renderMealIdea(idea, `Built-in fallback: ${String(err.message || err).slice(0, 90)}`);
-    $('#geminiStatus').textContent = 'Used built-in fallback. Gemini may be missing, over quota, blocked by billing, or unavailable.';
+    $('#geminiStatus').textContent = 'Used built-in fallback. The AI Worker may be missing, over quota, blocked by billing, or unavailable.';
   }
   feedback('save');
   save();
@@ -1257,8 +1243,8 @@ $('#geminiForm').addEventListener('submit', e => {
   e.preventDefault();
   const data = formObj(e.target);
   db.gemini = { apiKey: data.geminiApiKey, model: data.geminiModel, useGemini: data.useGemini };
-  db.geminiFreeDailyRequests = data.geminiFreeDailyRequests || '1000';
-  $('#geminiStatus').textContent = data.geminiApiKey ? 'Gemini settings saved in this browser.' : (EMBEDDED_GEMINI_API_KEY ? 'Using temporary embedded Gemini key for testing.' : 'No Gemini key saved. Built-in fallback will be used.');
+  db.geminiFreeDailyRequests = data.geminiFreeDailyRequests || '0';
+  $('#geminiStatus').textContent = AI_WORKER_URL ? 'AI Worker is configured. No browser API key is needed.' : 'No AI Worker configured. Built-in fallback will be used.';
   feedback('save');
   save();
 });
@@ -1266,7 +1252,7 @@ $('#geminiForm').addEventListener('submit', e => {
 $('#clearGeminiKey').addEventListener('click', () => {
   db.gemini = { ...db.gemini, apiKey: '' };
   hydrateSettings();
-  $('#geminiStatus').textContent = EMBEDDED_GEMINI_API_KEY ? 'User key cleared. Temporary embedded Gemini key is still active.' : 'Gemini key cleared. Built-in fallback will be used.';
+  $('#geminiStatus').textContent = AI_WORKER_URL ? 'AI Worker is configured. No browser API key is needed.' : 'Browser key cleared. Built-in fallback will be used.';
   feedback('save');
   save();
 });

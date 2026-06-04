@@ -33,27 +33,25 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - Food and symptom correlation hints
 - Trends tab with user-controlled match threshold for food/drink links to symptoms and digestion changes
 - Healthy swap builder with simple recipe suggestions
-- Optional bring-your-own Gemini API key for AI food swaps, with automatic built-in fallback
-- Temporary embedded Gemini key option for private friend testing before a secure backend is added
-- Gemini API call cost estimates from returned token usage, with last-call and saved-total tracking
-- Free daily Gemini request allowance estimate so testing can show covered versus billable usage
+- Claude Sonnet food swaps and meal photo estimates through a private Cloudflare Worker
+- Automatic built-in fallback if the AI Worker is missing, over quota, blocked by billing or unavailable
+- Anthropic API call cost estimates from returned token usage, with last-call and saved-total tracking
 - Other peptide tracker for user-entered records
 - Peptide symptom log with repeated co-use pattern notes
 - Optional click/save sounds and mobile vibration feedback
 - JSON backup, JSON restore and CSV summary export
 - Auto-save to browser storage plus IndexedDB for more durable reopen behaviour
 
-## Temporary Gemini key
+## Private AI Worker
 
-For private testing, put your Gemini API key in `config.js`:
+Food photo estimates and food swaps use a Cloudflare Worker so the Anthropic key is not exposed in GitHub Pages, the browser or the APK.
 
-```js
-window.VIALWISE_CONFIG = {
-  geminiApiKey: 'YOUR_KEY_HERE'
-};
-```
+- App endpoint: `https://vialwise.garryrobson85.workers.dev`
+- Secret name in Cloudflare: `ANTHROPIC_API_KEY`
+- Model: Claude Sonnet, configured in the Worker
+- Worker setup files: `../cloudflare_worker`
 
-Do not publish a public build with a real key in `config.js`. Use a backend before public launch.
+Do not publish a real Anthropic key in `config.js`, GitHub Pages or the mobile app files.
 
 ## Deploy on GitHub Pages
 
