@@ -24,6 +24,8 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - Vial, pen and cost-per-injection calculations
 - Peptide-neutral reconstitution calculator with mg/mcg/IU, ml/U-100 units, syringe sizing, rounding, doses per vial and draw warnings
 - Weight, food, symptom, mood and daily check-in logs
+- BMR, maintenance calorie and slow/medium/aggressive loss target estimates from age, height, weight and activity level
+- Day-by-day food diary with manual calories, protein, carbs and fat totals
 - Photo-first meal logging with camera/upload, editable AI calorie and macro estimates, and manual fallback
 - Optional local progress photos in the weight tracker with mobile camera/upload support
 - Today focus shows first-versus-latest progress photos on days without scheduled injections

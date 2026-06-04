@@ -37,11 +37,7 @@ const siteAliases = {
 };
 
 const geminiPricesUsd = {
-  'claude-sonnet-4-6': { input: 3.00, output: 15.00 },
-  'gemini-2.0-flash': { input: 0.10, output: 0.40 },
-  'gemini-2.5-flash': { input: 0.30, output: 2.50 },
-  'gemini-2.5-pro': { input: 1.25, output: 10.00 },
-  'gemini-2.5-flash-lite': { input: 0.10, output: 0.40 }
+  'claude-sonnet-4-6': { input: 3.00, output: 15.00 }
 };
 
 const defaults = {
@@ -54,6 +50,10 @@ const defaults = {
     theme: 'rose',
     startWeight: '',
     units: 'kg',
+    age: '',
+    heightCm: '',
+    activityLevel: 'light',
+    caloriePace: 'medium',
     glp1: 'semaglutide',
     currentDose: '0.25',
     customDose: '',
@@ -75,7 +75,7 @@ const defaults = {
   peptides: [],
   peptideSymptoms: [],
   foodIdeas: [],
-  gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes' },
+  gemini: { apiKey: '', model: AI_MODEL, useGemini: 'yes' },
   geminiFreeDailyRequests: '0',
   geminiUsage: [],
   compounds: []
@@ -91,7 +91,7 @@ function normaliseDb(loaded = {}) {
     doseHistory: loaded.doseHistory || [],
     peptides: loaded.peptides || loaded.compounds || [],
     peptideSymptoms: loaded.peptideSymptoms || [],
-    gemini: { apiKey: '', model: 'gemini-2.5-flash-lite', useGemini: 'yes', ...(loaded.gemini || {}) },
+    gemini: { apiKey: '', model: AI_MODEL, useGemini: 'yes', ...(loaded.gemini || {}), apiKey: '' },
     geminiFreeDailyRequests: loaded.geminiFreeDailyRequests || '0',
     geminiUsage: loaded.geminiUsage || [],
     foodIdeas: loaded.foodIdeas || []
@@ -299,7 +299,7 @@ function ensureMealPhotoUi() {
 }
 
 function applyFoodTestingMode() {
-  $('#foodForm')?.closest('.card')?.classList.add('hidden');
+  $('#foodForm')?.closest('.card')?.classList.remove('hidden');
   $('#mealIdeaForm')?.closest('.card')?.classList.remove('hidden');
   $('.meal-snap-card')?.classList.remove('hidden');
   const geminiCard = $('#geminiForm')?.closest('.card');
@@ -672,7 +672,8 @@ function render() {
   renderSiteHistory();
   $('#weightList').innerHTML = [...db.weights].sort((a, b) => b.date.localeCompare(a.date)).map(w => `<article class="item"><div class="item-head"><b>${esc(w.date)}: ${esc(w.weight)}${esc(w.unit)}</b><button onclick="editItem('weights','${w.id}')">Edit</button></div>${w.photo ? `<img class="entry-photo" src="${w.photo}" alt="Progress photo for ${esc(w.date)}">` : ''}<span>Appetite: ${esc(w.appetite || '-')} | Waist: ${esc(w.waist || '-')}</span><p>${esc(w.notes || '')}</p></article>`).join('') || '<div class="empty">No weight entries.</div>';
   renderPhotoGallery();
-  $('#foodList').innerHTML = [...db.foods].sort((a, b) => b.date.localeCompare(a.date)).map(renderFoodEntry).join('') || '<div class="empty">No food entries.</div>';
+  renderNutritionSummary();
+  $('#foodList').innerHTML = renderFoodDiary();
   $('#symptomList').innerHTML = [...db.symptoms].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(s => `<article class="item"><div class="item-head"><b>${esc(s.date)} ${esc(s.time || '')}: ${esc(s.symptom)}</b><button onclick="editItem('symptoms','${s.id}')">Edit</button></div><span>Severity ${esc(s.severity || 0)}/10 | possible trigger: ${esc(s.trigger || '-')}</span><p>${esc(s.notes || '')}</p></article>`).join('') || '<div class="empty">No symptom entries.</div>';
   $('#digestionList').innerHTML = [...db.digestion].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map(d => `<article class="item"><div class="item-head"><b>${esc(d.date)} ${esc(d.time || '')}: ${esc(d.movement)}</b><button onclick="editItem('digestion','${d.id}')">Edit</button></div><span>${esc(d.bristol || 'Bristol not set')} | discomfort ${esc(d.discomfort || 0)}/10 | ${esc(d.urgency || 'Normal')}</span><small>Hydration ${esc(d.hydration || '-')} | trigger ${esc(d.trigger || '-')}</small><p>${esc(d.notes || '')}</p></article>`).join('') || '<div class="empty">No digestion entries.</div>';
   renderDigestionSummary();
@@ -813,6 +814,71 @@ function renderPhotoGallery() {
   $('#photoGallery').innerHTML = photos.length ? photos.map(w => `<figure><img src="${w.photo}" alt="Progress photo ${esc(w.date)}"><figcaption>${esc(w.date)} | ${esc(w.weight)}${esc(w.unit)}</figcaption></figure>`).join('') : '<div class="empty">No progress photos yet.</div>';
 }
 
+function weightKg(value, unit) {
+  const n = num(value);
+  if (!n) return 0;
+  return unit === 'st' ? n * 6.35029 : n;
+}
+
+function latestWeightKg() {
+  const weights = [...db.weights].filter(w => num(w.weight)).sort((a, b) => b.date.localeCompare(a.date));
+  const latest = weights[0];
+  if (latest) return weightKg(latest.weight, latest.unit || db.settings.units || 'kg');
+  return weightKg(db.settings.startWeight, db.settings.units || 'kg');
+}
+
+function bmrProfile() {
+  const kg = latestWeightKg();
+  const cm = num(db.settings.heightCm);
+  const age = num(db.settings.age);
+  if (!kg || !cm || !age) return null;
+  const sexOffset = db.settings.gender === 'male' ? 5 : db.settings.gender === 'female' ? -161 : -78;
+  const bmr = (10 * kg) + (6.25 * cm) - (5 * age) + sexOffset;
+  const activity = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725 }[db.settings.activityLevel || 'light'] || 1.375;
+  const tdee = bmr * activity;
+  const targets = { slow: Math.max(1000, tdee - 250), medium: Math.max(1000, tdee - 500), aggressive: Math.max(1000, tdee - 750) };
+  return { bmr, tdee, targets, selected: db.settings.caloriePace || 'medium' };
+}
+
+function dailyFoodTotals(date) {
+  return db.foods.filter(f => f.date === date).reduce((sum, f) => ({
+    calories: sum.calories + num(f.calories),
+    protein: sum.protein + num(f.protein),
+    carbs: sum.carbs + num(f.carbs),
+    fat: sum.fat + num(f.fat),
+    count: sum.count + 1
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0, count: 0 });
+}
+
+function renderNutritionSummary() {
+  const box = $('#nutritionSummary');
+  if (!box) return;
+  const profile = bmrProfile();
+  const totals = dailyFoodTotals(today());
+  if (!profile) {
+    box.innerHTML = 'Add age, height, weight and activity level in onboarding or Settings to calculate BMR and calorie targets.';
+    return;
+  }
+  const target = profile.targets[profile.selected] || profile.targets.medium;
+  const left = target - totals.calories;
+  box.innerHTML = `<div class="result-grid"><div><span>BMR</span><b>${Math.round(profile.bmr)} kcal</b></div><div><span>Maintenance</span><b>${Math.round(profile.tdee)} kcal</b></div><div><span>Slow loss</span><b>${Math.round(profile.targets.slow)} kcal</b></div><div><span>Medium loss</span><b>${Math.round(profile.targets.medium)} kcal</b></div><div><span>Aggressive loss</span><b>${Math.round(profile.targets.aggressive)} kcal</b></div><div><span>Selected target</span><b>${Math.round(target)} kcal</b></div><div><span>Logged today</span><b>${Math.round(totals.calories)} kcal</b></div><div><span>${left >= 0 ? 'Remaining' : 'Over target'}</span><b>${Math.abs(Math.round(left))} kcal</b></div></div><p class="fine-print">Uses Mifflin-St Jeor BMR plus your activity level. Planning estimate only, not medical advice.</p>`;
+}
+
+function renderFoodDiary() {
+  if (!db.foods.length) return '<div class="empty">No food entries.</div>';
+  const groups = {};
+  db.foods.forEach(food => {
+    const date = food.date || today();
+    groups[date] = groups[date] || [];
+    groups[date].push(food);
+  });
+  return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])).map(([date, foods]) => {
+    const totals = dailyFoodTotals(date);
+    const entries = foods.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(renderFoodEntry).join('');
+    return `<article class="item food-day"><div class="item-head"><b>${esc(date)}</b><span class="pill">${totals.count} entr${totals.count === 1 ? 'y' : 'ies'}</span></div><div><span class="pill">${Math.round(totals.calories)} kcal</span><span class="pill">${cleanNumber(totals.protein)}g protein</span><span class="pill">${cleanNumber(totals.carbs)}g carbs</span><span class="pill">${cleanNumber(totals.fat)}g fat</span></div><div class="food-day-entries">${entries}</div></article>`;
+  }).join('');
+}
+
 function renderFoodEntry(f) {
   const macroBits = [
     f.calories ? `${esc(f.calories)} kcal` : '',
@@ -820,7 +886,7 @@ function renderFoodEntry(f) {
     f.carbs ? `C ${esc(f.carbs)}g` : '',
     f.fat ? `F ${esc(f.fat)}g` : ''
   ].filter(Boolean);
-  return `<article class="item food-entry"><div class="item-head"><b>${esc(f.date)}: ${esc(f.meal)}</b><button onclick="editItem('foods','${f.id}')">Edit</button></div>${f.photo ? `<img class="entry-photo meal-entry-photo" src="${f.photo}" alt="Meal photo for ${esc(f.meal)}">` : ''}<div>${macroBits.map(bit => `<span class="pill">${bit}</span>`).join('')}<span class="pill">${esc(f.portion || 'Meal')}</span><span class="pill">fatty ${esc(f.fatty || 'No')}</span><span class="pill">spicy ${esc(f.spicy || 'No')}</span><span class="pill">caffeine ${esc(f.caffeine || 'No')}</span>${f.confidence ? `<span class="pill">${esc(f.confidence)} confidence</span>` : ''}</div>${f.items ? `<small>Detected: ${esc(f.items)}</small>` : ''}${f.source ? `<small>${esc(f.source)}</small>` : ''}<p>${esc(f.notes || '')}</p></article>`;
+  return `<article class="item food-entry"><div class="item-head"><b>${esc(f.time || '')} ${esc(f.mealType || f.portion || 'Meal')}: ${esc(f.meal)}</b><div class="item-actions"><button onclick="editItem('foods','${f.id}')">Edit</button><button onclick="del('foods','${f.id}')">Delete</button></div></div>${f.photo ? `<img class="entry-photo meal-entry-photo" src="${f.photo}" alt="Meal photo for ${esc(f.meal)}">` : ''}<div>${macroBits.map(bit => `<span class="pill">${bit}</span>`).join('')}<span class="pill">${esc(f.portion || 'Meal')}</span><span class="pill">fatty ${esc(f.fatty || 'No')}</span><span class="pill">spicy ${esc(f.spicy || 'No')}</span><span class="pill">caffeine ${esc(f.caffeine || 'No')}</span>${f.confidence ? `<span class="pill">${esc(f.confidence)} confidence</span>` : ''}</div>${f.items ? `<small>Detected: ${esc(f.items)}</small>` : ''}${f.source ? `<small>${esc(f.source)}</small>` : ''}<p>${esc(f.notes || '')}</p></article>`;
 }
 
 function renderDigestionSummary() {
@@ -857,7 +923,7 @@ function renderMealIdea(idea, source = 'Built-in fallback') {
 }
 
 function geminiUsageCost(model, usage = {}) {
-  const prices = geminiPricesUsd[model] || geminiPricesUsd[AI_MODEL] || geminiPricesUsd['gemini-2.5-flash-lite'];
+  const prices = geminiPricesUsd[model] || geminiPricesUsd[AI_MODEL];
   const promptTokens = num(usage.promptTokenCount);
   const outputTokens = Math.max(num(usage.candidatesTokenCount) + num(usage.thoughtsTokenCount), num(usage.totalTokenCount) - promptTokens, 0);
   const costUsd = (promptTokens / 1000000) * prices.input + (outputTokens / 1000000) * prices.output;
@@ -877,14 +943,10 @@ function sameUtcDay(a, b = new Date()) {
 }
 
 function geminiBillingSummary() {
-  const freeDaily = AI_WORKER_URL ? 0 : Math.max(0, Math.floor(num(db.geminiFreeDailyRequests) || 0));
   const todayRows = db.geminiUsage.filter(row => sameUtcDay(row.date));
-  const billableToday = todayRows.slice(freeDaily);
   return {
-    freeDaily,
     usedToday: todayRows.length,
-    freeLeft: Math.max(0, freeDaily - todayRows.length),
-    billableTodayCost: billableToday.reduce((sum, row) => sum + num(row.costUsd), 0),
+    billableTodayCost: todayRows.reduce((sum, row) => sum + num(row.costUsd), 0),
     trackedCost: db.geminiUsage.reduce((sum, row) => sum + num(row.costUsd), 0)
   };
 }
@@ -904,7 +966,7 @@ function renderGeminiUsage() {
   const prices = geminiPricesUsd[AI_MODEL];
   const keyMode = AI_WORKER_URL ? 'Private Worker active. No AI key is stored in the app or browser.' : 'No Worker active; fallback suggestions will be used.';
   const billing = geminiBillingSummary();
-  box.innerHTML = `<b>API cost estimate</b><div class="result-grid"><div><span>Last raw cost</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Free left today</span><b>${billing.freeLeft}/${billing.freeDaily}</b></div><div><span>Billable today</span><b>${usd(billing.billableTodayCost)}</b></div><div><span>Tracked raw total</span><b>${usd(billing.trackedCost)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">${esc(keyMode)} Anthropic usage is estimated from returned token counts and may differ from the final invoice after credits, taxes, or provider-side billing rules.</p>`;
+  box.innerHTML = `<b>Anthropic cost estimate</b><div class="result-grid"><div><span>Last estimate</span><b>${last ? usd(last.costUsd) : '$0.0000'}</b></div><div><span>Today estimate</span><b>${usd(billing.billableTodayCost)}</b></div><div><span>Tracked total</span><b>${usd(billing.trackedCost)}</b></div><div><span>Tracked calls</span><b>${calls}</b></div><div><span>Last input tokens</span><b>${last ? cleanNumber(last.promptTokens) : '0'}</b></div><div><span>Last output tokens</span><b>${last ? cleanNumber(last.outputTokens) : '0'}</b></div><div><span>${esc(model)} rates</span><b>$${prices.input}/M in | $${prices.output}/M out</b></div></div><p class="fine-print">${esc(keyMode)} Anthropic has no free request allowance in this calculator. Estimates use returned Claude token counts and may differ from the final invoice after credits, taxes or provider-side billing rules.</p>`;
 }
 
 function geminiPrompt(craving, preference) {
@@ -1071,6 +1133,14 @@ function expandSchedule(data) {
   });
 }
 
+function normaliseFood(data) {
+  return {
+    ...data,
+    source: data.source || 'Manual entry',
+    mealType: data.mealType || data.portion || 'Meal'
+  };
+}
+
 function bindForm(idName, collection, normalise = data => data) {
   $(`#${idName}`).addEventListener('submit', e => {
     e.preventDefault();
@@ -1126,20 +1196,24 @@ $('#onboardingForm').addEventListener('submit', e => {
     if (key.startsWith('onboardVial')) delete settingsData[key];
   });
   db.settings = { ...db.settings, ...settingsData, onboarded: true };
-  if (settingsData.mode === 'vials' && data.onboardVialName && data.onboardVialAmount) {
+  if (settingsData.mode === 'vials' && data.onboardVialAmount) {
     db.vials.push({
       ...normaliseVialForm({
-        name: data.onboardVialName,
+        name: data.onboardVialName || `${glp1Options[settingsData.glp1]?.name || 'Peptide'} vial inventory`,
         type: 'GLP-1 / peptide',
         quantity: data.onboardVialQuantity || '1',
         amount: data.onboardVialAmount,
         amountUnit: data.onboardVialAmountUnit || 'mg',
         water: data.onboardVialWater,
         waterUnit: data.onboardVialWaterUnit || 'ml',
+        remaining: data.onboardVialRemaining,
+        remainingUnit: data.onboardVialRemainingUnit || data.onboardVialAmountUnit || 'mg',
         cost: data.onboardVialCost,
-        dose: settingsData.customDose || settingsData.currentDose,
-        doseUnit: settingsData.doseUnit || 'mg',
-        notes: 'Added during onboarding'
+        dose: data.onboardVialDose || settingsData.customDose || settingsData.currentDose,
+        doseUnit: data.onboardVialDoseUnit || settingsData.doseUnit || 'mg',
+        batch: data.onboardVialBatch,
+        expiry: data.onboardVialExpiry,
+        notes: data.onboardVialNotes || 'Added during onboarding'
       }),
       id: id()
     });
@@ -1187,7 +1261,7 @@ $('#weightForm').addEventListener('submit', async e => {
   feedback('save');
   save();
 });
-bindForm('foodForm', 'foods');
+bindForm('foodForm', 'foods', normaliseFood);
 bindForm('symptomForm', 'symptoms');
 bindForm('digestionForm', 'digestion');
 bindForm('logForm', 'logs');
@@ -1215,8 +1289,7 @@ async function makeMealIdea(data) {
     const cost = recordGeminiUsage(AI_MODEL, idea.usageMetadata);
     const { usageMetadata, ...savedIdea } = idea;
     db.foodIdeas.push({ ...data, ...savedIdea, id: id(), date: today(), source: 'Claude Sonnet via Worker', costUsd: cost.costUsd });
-    const billing = geminiBillingSummary();
-    const costLabel = billing.usedToday <= billing.freeDaily ? 'covered by free allowance' : `billable estimate ${usd(cost.costUsd)}`;
+    const costLabel = `estimated cost ${usd(cost.costUsd)}`;
     renderMealIdea(savedIdea, `Claude Sonnet via Worker | ${costLabel}`);
     $('#geminiStatus').textContent = `AI Worker generated the latest suggestion: ${costLabel}.`;
   } catch (err) {
@@ -1360,7 +1433,7 @@ $('#exportCsv').addEventListener('click', () => {
   db.vials.forEach(v => rows.push(['vial', '', v.name, `${itemQuantity(v)} x ${v.amount || v.amountMg || ''}${v.amountUnit || 'mg'}`, v.cost || 0, v.notes || ''].map(csvCell).join(',')));
   db.schedule.forEach(s => rows.push(['schedule', s.date, vialName(s.vialId), `${s.amount || s.amountMcg || ''}${s.amountUnit || 'mg'}`, s.actualCost || autoCost(s), s.notes || ''].map(csvCell).join(',')));
   db.doseHistory.forEach(d => rows.push(['dose_history', d.date, glpName(d.glp1), `${d.amount}${d.unit}`, '', d.notes || ''].map(csvCell).join(',')));
-  db.foods.forEach(f => rows.push(['food', f.date, f.meal, f.portion, '', f.notes || ''].map(csvCell).join(',')));
+  db.foods.forEach(f => rows.push(['food', f.date, f.meal, `${f.mealType || f.portion || 'Meal'} | ${f.calories || 0} kcal | P ${f.protein || 0}g C ${f.carbs || 0}g F ${f.fat || 0}g`, '', f.notes || ''].map(csvCell).join(',')));
   db.symptoms.forEach(s => rows.push(['symptom', s.date, s.symptom, `severity ${s.severity || 0}`, '', s.notes || ''].map(csvCell).join(',')));
   db.digestion.forEach(d => rows.push(['digestion', d.date, d.movement, `frequency ${d.frequency || 0}`, '', d.notes || ''].map(csvCell).join(',')));
   db.peptides.forEach(p => rows.push(['peptide', p.startDate || '', p.name, `${p.amount || ''}${p.unit || ''}`, '', p.notes || ''].map(csvCell).join(',')));
