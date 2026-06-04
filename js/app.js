@@ -286,7 +286,7 @@ function ensureMealPhotoUi() {
   if ($('#mealPhotoForm')) return;
   const grid = $('#food .grid.two-col');
   if (!grid) return;
-  grid.insertAdjacentHTML('beforeend', `<article class="card meal-snap-card"><h2>Snap meal</h2><p class="muted">Take or upload a meal photo, then review the estimate before saving.</p><form id="mealPhotoForm" class="form-grid single"><label>Meal photo<input name="mealPhoto" type="file" accept="image/*" capture="environment"></label><label>Extra context<textarea name="mealContext" rows="3" placeholder="Example: chicken wrap, small fries, Diet Coke. Mention sauces, oil, restaurant, or anything hidden."></textarea></label><label>Meal type<select name="mealType"><option>Meal</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Drink</option></select></label><button class="primary" type="submit">Estimate from photo</button></form><div id="mealPhotoPreview" class="meal-photo-preview empty">No meal photo selected.</div><div id="mealScanResult" class="result muted">AI estimates are a starting point. Review before saving.</div></article>`);
+  grid.insertAdjacentHTML('beforeend', `<article class="card meal-snap-card"><h2>Snap meal</h2><p class="muted">Take or upload a meal photo, choose the meal type, then review the estimate before saving.</p><form id="mealPhotoForm" class="form-grid single"><label>Meal photo<input name="mealPhoto" type="file" accept="image/*" capture="environment"></label><label>Meal type<select name="mealType"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Drink</option><option>Meal</option></select></label><label>Extra context<textarea name="mealContext" rows="3" placeholder="Example: chicken wrap, small fries, Diet Coke. Mention sauces, oil, restaurant, or anything hidden."></textarea></label><button class="primary" type="submit">Estimate from photo</button></form><div id="mealPhotoPreview" class="meal-photo-preview empty">No meal photo selected.</div><div id="mealScanResult" class="result muted">AI estimates are a starting point. Review before saving.</div></article>`);
   $('#mealPhotoForm').addEventListener('change', async e => {
     if (e.target.name !== 'mealPhoto') return;
     const file = e.target.files[0];
@@ -1026,7 +1026,8 @@ function renderMealReview(estimate, photo, source, context, mealType) {
     <label>Protein (g)<input name="protein" type="number" min="0" step="1" value="${esc(estimate.protein || '')}"></label>
     <label>Carbs (g)<input name="carbs" type="number" min="0" step="1" value="${esc(estimate.carbs || '')}"></label>
     <label>Fat (g)<input name="fat" type="number" min="0" step="1" value="${esc(estimate.fat || '')}"></label>
-    <label>Portion<select name="portion"><option>${esc(mealType || 'Meal')}</option><option>Small</option><option>Normal</option><option>Large</option></select></label>
+    <label>Meal type<select name="mealType">${['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Drink', 'Meal'].map(type => `<option${type === mealType ? ' selected' : ''}>${type}</option>`).join('')}</select></label>
+    <label>Portion<select name="portion"><option>Normal</option><option>Small</option><option>Large</option><option>Custom</option></select></label>
     <label>Fatty?<select name="fatty"><option${estimate.fatty === 'No' ? ' selected' : ''}>No</option><option${estimate.fatty === 'Yes' ? ' selected' : ''}>Yes</option></select></label>
     <label>Spicy?<select name="spicy"><option${estimate.spicy === 'No' ? ' selected' : ''}>No</option><option${estimate.spicy === 'Yes' ? ' selected' : ''}>Yes</option></select></label>
     <label>Caffeine?<select name="caffeine"><option${estimate.caffeine === 'No' ? ' selected' : ''}>No</option><option${estimate.caffeine === 'Yes' ? ' selected' : ''}>Yes</option></select></label>
@@ -1040,7 +1041,7 @@ function renderMealReview(estimate, photo, source, context, mealType) {
   $('#mealReviewForm').addEventListener('submit', e => {
     e.preventDefault();
     const data = formObj(e.target);
-    db.foods.push({ ...data, id: id(), date: today(), mealType, aiReviewed: 'Yes' });
+    db.foods.push({ ...data, id: id(), date: today(), aiReviewed: 'Yes' });
     $('#mealPhotoForm').reset();
     $('#mealPhotoPreview').innerHTML = 'No meal photo selected.';
     $('#mealScanResult').textContent = 'Meal saved. Snap another meal whenever you are ready.';
