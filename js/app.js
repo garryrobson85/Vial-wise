@@ -919,7 +919,8 @@ function suggestMeal(craving, preference) {
 }
 
 function renderMealIdea(idea, source = 'Built-in fallback') {
-  $('#mealIdeaResult').innerHTML = `<b>${esc(idea.title)}</b><p>${esc(idea.swap)}</p><b>Ingredients</b><ul>${idea.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul><b>Recipe</b><ol>${idea.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol><small>${esc(source)}</small>`;
+  idea.note = nonQuestionNote(idea.note, 'Assumes a practical home-style portion.');
+  $('#mealIdeaResult').innerHTML = `<b>${esc(idea.title)}</b><p>${esc(idea.swap)}</p><b>Ingredients</b><ul>${idea.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul><b>Recipe</b><ol>${idea.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>${idea.note ? `<p class="fine-print">${esc(idea.note)}</p>` : ''}<small>${esc(source)}</small>`;
 }
 
 function geminiUsageCost(model, usage = {}) {
@@ -970,11 +971,11 @@ function renderGeminiUsage() {
 }
 
 function geminiPrompt(craving, preference) {
-  return `You are helping a GLP-1 user choose a practical food swap. Do not give medical advice. Suggest one healthier alternative and a simple recipe. The user wants: ${craving}. Preference: ${preference}. Make it realistic, satisfying, higher protein where suitable, gentle on nausea/reflux where suitable, and avoid moralising language. Return compact JSON only with keys: title, swap, ingredients (array of 5-8 strings), steps (array of 4-6 strings), note.`;
+  return `You are helping a GLP-1 user choose a practical food swap. Do not give medical advice. Suggest one healthier alternative and a simple recipe. The user wants: ${craving}. Preference: ${preference}. Make reasonable assumptions from the request and do not ask follow-up questions. Make it realistic, satisfying, higher protein where suitable, gentle on nausea/reflux where suitable, and avoid moralising language. Return compact JSON only with keys: title, swap, ingredients (array of 5-8 strings), steps (array of 4-6 strings), note. The note must be a short useful caution or assumption, never a question.`;
 }
 
 function mealPhotoPrompt(context, mealType) {
-  return `You are estimating a food log for a GLP-1 user from a meal photo. Be useful but cautious: photo calorie estimates are approximate and the user must review before saving. Look for hidden calorie sources like oil, butter, sauces, cheese, nuts, sugar drinks, alcohol, and large portions. Context from user: ${context || 'none'}. Meal type: ${mealType || 'Meal'}. Return compact JSON only with keys: meal, items (array of strings), calories, protein, carbs, fat, fatty (Yes/No), spicy (Yes/No), caffeine (Yes/No), confidence (Low/Medium/High), glpNotes, reviewPrompt. If unsure, choose conservative ranges collapsed to one reasonable midpoint and explain uncertainty in glpNotes.`;
+  return `You are estimating a food log for a GLP-1 user from a meal photo. Be useful but cautious: photo calorie estimates are approximate and the user must review before saving. Look for hidden calorie sources like oil, butter, sauces, cheese, nuts, sugar drinks, alcohol, and large portions. Context from user: ${context || 'none'}. Meal type: ${mealType || 'Meal'}. Make reasonable assumptions from the image and context. Do not ask follow-up questions and do not tell the user to answer anything. Return compact JSON only with keys: meal, items (array of strings), calories, protein, carbs, fat, fatty (Yes/No), spicy (Yes/No), caffeine (Yes/No), confidence (Low/Medium/High), glpNotes, reviewPrompt. If unsure, choose conservative ranges collapsed to one reasonable midpoint and explain uncertainty in glpNotes. reviewPrompt must be a short non-question instruction such as "Review hidden oils, sauces and portion size before saving."`;
 }
 
 function dataUrlParts(dataUrl) {
@@ -1002,7 +1003,7 @@ async function callAiWorker(path, payload) {
 
 function fallbackMealEstimate(context, mealType, photo) {
   const q = String(context || '').toLowerCase();
-  const estimate = { meal: context || `${mealType || 'Meal'} photo`, items: [], calories: 450, protein: 25, carbs: 45, fat: 18, fatty: 'No', spicy: 'No', caffeine: 'No', confidence: photo ? 'Low' : 'Low', glpNotes: 'Basic fallback estimate only. Add details or use AI for a better review.', reviewPrompt: 'Adjust calories, macros and flags before saving.' };
+  const estimate = { meal: context || `${mealType || 'Meal'} photo`, items: [], calories: 450, protein: 25, carbs: 45, fat: 18, fatty: 'No', spicy: 'No', caffeine: 'No', confidence: photo ? 'Low' : 'Low', glpNotes: 'Basic fallback estimate only using visible/context clues.', reviewPrompt: 'Review hidden oils, sauces and portion size before saving.' };
   if (q.includes('pizza')) Object.assign(estimate, { meal: 'Pizza meal', items: ['pizza'], calories: 700, protein: 28, carbs: 78, fat: 30, fatty: 'Yes' });
   else if (q.includes('burger')) Object.assign(estimate, { meal: 'Burger meal', items: ['burger'], calories: 750, protein: 35, carbs: 65, fat: 38, fatty: 'Yes' });
   else if (q.includes('salad')) Object.assign(estimate, { meal: 'Salad meal', items: ['salad', 'dressing'], calories: 420, protein: 25, carbs: 25, fat: 24 });
@@ -1010,6 +1011,12 @@ function fallbackMealEstimate(context, mealType, photo) {
   if (q.includes('spicy') || q.includes('chilli') || q.includes('curry')) estimate.spicy = 'Yes';
   if (q.includes('fried') || q.includes('chips') || q.includes('fries') || q.includes('cream') || q.includes('cheese')) estimate.fatty = 'Yes';
   return estimate;
+}
+
+function nonQuestionNote(text, fallback) {
+  const value = String(text || '').trim();
+  if (!value || value.includes('?')) return fallback;
+  return value;
 }
 
 async function generateGeminiMealPhoto(photoDataUrl, context, mealType) {
@@ -1020,6 +1027,8 @@ async function generateGeminiMealPhoto(photoDataUrl, context, mealType) {
 }
 
 function renderMealReview(estimate, photo, source, context, mealType) {
+  estimate.glpNotes = nonQuestionNote(estimate.glpNotes, 'Estimate uses visible food and provided context only.');
+  estimate.reviewPrompt = nonQuestionNote(estimate.reviewPrompt, 'Review hidden oils, sauces and portion size before saving.');
   $('#mealScanResult').innerHTML = `<form id="mealReviewForm" class="meal-review form-grid">
     <label>Meal name<input name="meal" value="${esc(estimate.meal || context || mealType || 'Meal')}" required></label>
     <label>Calories<input name="calories" type="number" min="0" step="1" value="${esc(estimate.calories || '')}"></label>
