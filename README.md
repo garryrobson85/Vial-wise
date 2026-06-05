@@ -6,7 +6,10 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 
 - Pre-filled pen / Vials mode navigation
 - First-load onboarding for name, style, start weight, GLP-1, current dose and pen/vial mode
+- Guided mobile-first onboarding with progress, back/continue flow, device type, schedule cadence, body basics, goal, routine, motivation and disclaimer
+- Premium dark mobile summary dashboard with next-jab ring, daily cards, results cards and educational medication-level chart
 - Mobile bottom navigation with Settings hub instead of a long top menu
+- Grouped settings hub styling for mobile
 - Boutique theme options based on user preference
 - Soft glow/neumorphic interface skin with Rose, Aqua, Plum and Slate colour choices
 - Animated page transitions, tactile pressed states and richer click/save feedback sounds

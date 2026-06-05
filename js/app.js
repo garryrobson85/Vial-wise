@@ -49,11 +49,16 @@ const defaults = {
     gender: 'female',
     theme: 'rose',
     startWeight: '',
+    startDate: '',
+    goalWeight: '',
     units: 'kg',
     age: '',
     heightCm: '',
     activityLevel: 'light',
     caloriePace: 'medium',
+    scheduleEvery: '7',
+    motivation: '',
+    healthDisclaimerAccepted: '',
     glp1: 'semaglutide',
     currentDose: '0.25',
     customDose: '',
@@ -198,6 +203,7 @@ const cleanNumber = n => String(Number(n || 0).toFixed(3)).replace(/\.?0+$/, '')
 const esc = s => String(s || '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const formObj = form => Object.fromEntries(new FormData(form).entries());
 const today = () => new Date().toISOString().slice(0, 10);
+const dayMs = 24 * 60 * 60 * 1000;
 
 function feedback(kind = 'tap') {
   if ((db.settings.feedback || 'on') === 'off') return;
@@ -249,6 +255,20 @@ function doseText(amount = currentDose().amount, unit = currentDose().unit) {
   return amount ? `${cleanNumber(amount)} ${unit}` : '-';
 }
 
+function doseMg(amount, unit) {
+  return num(amount) * (unit === 'mcg' ? 0.001 : 1);
+}
+
+function latestWeight() {
+  return [...db.weights].filter(w => num(w.weight)).sort((a, b) => b.date.localeCompare(a.date))[0] || null;
+}
+
+function bmiValue(weightKgValue = latestWeightKg()) {
+  const heightM = num(db.settings.heightCm) / 100;
+  if (!weightKgValue || !heightM) return 0;
+  return weightKgValue / (heightM * heightM);
+}
+
 function populateGlpSelects() {
   const options = Object.entries(glp1Options).map(([key, item]) => `<option value="${key}">${item.name}</option>`).join('');
   $('#settingsGlp1').innerHTML = options;
@@ -298,6 +318,69 @@ function ensureMealPhotoUi() {
   });
 }
 
+function enhanceOnboardingWizard() {
+  const form = $('#onboardingForm');
+  if (!form || form.dataset.wizardReady) return;
+  form.dataset.wizardReady = 'true';
+  const grid = form.querySelector('.form-grid');
+  const submit = form.querySelector('button[type="submit"]');
+  const field = name => grid.querySelector(`[name="${name}"]`)?.closest('label,.mode-panel');
+  const modePanels = [...grid.querySelectorAll('.mode-panel')];
+  const steps = [
+    { title: 'Make VialWise yours', sub: 'A quick setup so the tracker starts useful.', names: ['name', 'gender', 'theme'] },
+    { title: 'Which GLP-1 are you tracking?', sub: 'Choose the medicine or compound name you currently use.', names: ['glp1', 'currentDose', 'customDose', 'doseUnit'] },
+    { title: 'Device type', sub: 'This changes the setup flow for pens or vial inventory.', names: ['mode'], extra: modePanels },
+    { title: 'How often do you take it?', sub: 'You can change schedule details later.', names: ['scheduleEvery'] },
+    { title: 'Your body basics', sub: 'Used for BMR, calorie targets and progress charts.', names: ['startWeight', 'startDate', 'goalWeight', 'units', 'age', 'heightCm'] },
+    { title: 'Daily routine', sub: 'This powers the calorie target estimate.', names: ['activityLevel', 'caloriePace'] },
+    { title: 'What is driving you?', sub: 'A small reminder for the days motivation is useful.', names: ['motivation'] },
+    { title: 'Health disclaimer', sub: 'VialWise tracks and calculates. It does not provide medical advice.', names: ['healthDisclaimerAccepted'] }
+  ];
+  const shell = document.createElement('div');
+  shell.className = 'wizard-shell';
+  shell.innerHTML = '<div class="wizard-top"><button class="wizard-back" type="button" aria-label="Back">Back</button><div class="wizard-track"><span></span></div></div><div class="wizard-steps"></div><div class="wizard-actions"><button class="wizard-next primary" type="button">Continue</button></div>';
+  const holder = shell.querySelector('.wizard-steps');
+  steps.forEach((step, index) => {
+    const pane = document.createElement('section');
+    pane.className = 'wizard-step';
+    pane.dataset.step = index;
+    pane.innerHTML = `<p class="eyebrow">Step ${index + 1} of ${steps.length}</p><h2>${esc(step.title)}</h2><p class="muted">${esc(step.sub)}</p><div class="wizard-fields"></div>`;
+    const fields = pane.querySelector('.wizard-fields');
+    step.names.map(field).filter(Boolean).forEach(node => fields.appendChild(node));
+    (step.extra || []).forEach(node => fields.appendChild(node));
+    holder.appendChild(pane);
+  });
+  grid.replaceWith(shell);
+  submit.classList.add('hidden');
+  form.appendChild(submit);
+  let current = 0;
+  const show = () => {
+    form.querySelectorAll('.wizard-step').forEach((pane, index) => pane.classList.toggle('active', index === current));
+    form.querySelector('.wizard-track span').style.width = `${((current + 1) / steps.length) * 100}%`;
+    form.querySelector('.wizard-back').disabled = current === 0;
+    form.querySelector('.wizard-next').textContent = current === steps.length - 1 ? 'Start tracking' : 'Continue';
+    syncModePanels(form.elements.mode?.value || db.settings.mode);
+  };
+  form.querySelector('.wizard-back').addEventListener('click', () => {
+    current = Math.max(0, current - 1);
+    show();
+  });
+  form.querySelector('.wizard-next').addEventListener('click', () => {
+    if (current < steps.length - 1) {
+      current += 1;
+      show();
+    } else {
+      form.requestSubmit(submit);
+    }
+  });
+  form.addEventListener('change', e => {
+    const label = e.target.closest('label');
+    if (!label) return;
+    label.classList.toggle('selected', !!e.target.value || e.target.checked);
+  });
+  show();
+}
+
 function applyFoodTestingMode() {
   $('#foodForm')?.closest('.card')?.classList.remove('hidden');
   $('#mealIdeaForm')?.closest('.card')?.classList.remove('hidden');
@@ -314,11 +397,13 @@ function hydrateSettings() {
   populateGlpSelects();
   refreshThemeLabels();
   ensureMealPhotoUi();
+  enhanceOnboardingWizard();
   applyFoodTestingMode();
   const form = $('#settingsForm');
   Object.entries(db.settings).forEach(([key, value]) => {
     const field = form.elements[key];
-    if (field) field.value = value;
+    if (field?.type === 'checkbox') field.checked = value === 'yes' || value === true || value === 'on';
+    else if (field) field.value = value;
   });
   populateDoseSelect(db.settings.glp1, db.settings.currentDose);
   $('#settingsGlp1').value = db.settings.glp1;
@@ -408,6 +493,7 @@ function switchView(view) {
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === view));
+  document.body.classList.toggle('settings-hub', view === 'setup');
   $('#mobileMoreMenu')?.classList.remove('open');
   $('#mobileMoreMenu')?.classList.add('hidden');
   pageTitle();
@@ -454,6 +540,8 @@ $('#startVialInventory')?.addEventListener('click', () => {
 });
 
 document.addEventListener('click', e => {
+  const view = e.target.closest('[data-view]')?.dataset.view;
+  if (view && !e.target.closest('#tabs,.bottom-nav,#mobileMoreMenu')) switchView(view);
   const jump = e.target.closest('[data-jump]')?.dataset.jump;
   if (jump) switchView(jump);
 });
@@ -601,6 +689,7 @@ function renderToday(spend, value, doses, cost) {
   const dose = currentDose();
   const due = db.schedule.filter(s => s.date === today());
   const next = nextSchedule();
+  renderSummaryDashboard(spend, value, doses, cost, due, next);
   $('#todayPlan').textContent = `${glpName()} ${doseText(dose.amount, dose.unit)}`;
   $('#todaySub').textContent = due.length ? `${due.length} schedule entr${due.length === 1 ? 'y' : 'ies'} due today.` : 'No injection scheduled today.';
   $('#heroCost').textContent = `${money(cost)} / injection`;
@@ -616,6 +705,72 @@ function renderToday(spend, value, doses, cost) {
   $('#costSnapshot').innerHTML = cost ? `<b>${money(cost)}</b> estimated per injection<br><b>${money(cost * 4.33)}</b> estimated monthly if weekly<br><b>${doses}</b> estimated doses left<br><b>${money(value)}</b> remaining value from ${money(spend)} spend` : (isPenMode() ? 'Add pen cost and doses per pen in Setup.' : 'Add a vial or pen to calculate cost per injection.');
   $('#todayInsights').innerHTML = insights();
   renderChecklist();
+}
+
+function halfLifeDays() {
+  return { semaglutide: 7, tirzepatide: 5, retatrutide: 6 }[db.settings.glp1] || 6;
+}
+
+function medicationLevelOn(date) {
+  const target = new Date(`${date}T12:00:00`);
+  const halfLife = halfLifeDays();
+  return db.schedule.filter(s => s.status === 'Taken').reduce((sum, s) => {
+    const takenAt = new Date(`${s.date}T${s.time || '12:00'}`);
+    const days = (target - takenAt) / dayMs;
+    if (days < 0) return sum;
+    const amount = doseMg(s.amount || s.amountMcg || currentDose().amount, s.amountUnit || (s.amountMcg ? 'mcg' : currentDose().unit));
+    return sum + amount * Math.pow(0.5, days / halfLife);
+  }, 0);
+}
+
+function levelSparkline() {
+  const points = [];
+  const start = new Date();
+  start.setDate(start.getDate() - 21);
+  for (let i = 0; i < 42; i++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    points.push({ date: date.toISOString().slice(0, 10), value: medicationLevelOn(date.toISOString().slice(0, 10)) });
+  }
+  const max = Math.max(...points.map(p => p.value), 1);
+  const path = points.map((p, i) => {
+    const x = (i / (points.length - 1)) * 100;
+    const y = 55 - (p.value / max) * 45;
+    return `${i ? 'L' : 'M'}${cleanNumber(x)} ${cleanNumber(y)}`;
+  }).join(' ');
+  const fill = `${path} L100 60 L0 60 Z`;
+  return `<svg class="level-chart" viewBox="0 0 100 62" preserveAspectRatio="none" aria-label="Estimated medication level chart"><path class="level-fill" d="${fill}"></path><path class="level-line" d="${path}"></path></svg>`;
+}
+
+function goalProgress() {
+  const start = weightKg(db.settings.startWeight, db.settings.units || 'kg');
+  const current = latestWeightKg();
+  const goal = weightKg(db.settings.goalWeight, db.settings.units || 'kg');
+  if (!start || !current || !goal || start === goal) return 0;
+  return Math.max(0, Math.min(100, ((start - current) / (start - goal)) * 100));
+}
+
+function renderSummaryDashboard(spend, value, doses, cost, due, next) {
+  let dash = $('#summaryDashboard');
+  if (!dash) {
+    dash = document.createElement('div');
+    dash.id = 'summaryDashboard';
+    dash.className = 'summary-dashboard';
+    $('#today .hero-panel')?.before(dash);
+  }
+  const taken = db.schedule.filter(s => s.status === 'Taken').length;
+  const last = [...db.schedule].filter(s => s.status === 'Taken').sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+  const totals = dailyFoodTotals(today());
+  const weight = latestWeight();
+  const bmi = bmiValue();
+  const progress = goalProgress();
+  const level = medicationLevelOn(today());
+  dash.innerHTML = `<div class="summary-head"><button class="hamburger" type="button" data-view="setup">Settings</button><h2>Summary</h2><button class="add-jab" type="button" data-jump="schedule">+ Add jab</button></div>
+  <section class="jab-strip"><h2>Jab history</h2><div class="mini-grid"><div><span>Jabs taken</span><b>${taken}</b></div><div><span>Last dose</span><b>${last ? doseText(last.amount || last.amountMcg || currentDose().amount, last.amountUnit || (last.amountMcg ? 'mcg' : currentDose().unit)) : '0 mg'}</b></div><div><span>Est. level</span><b>${cleanNumber(level)} mg</b></div></div></section>
+  <section class="next-ring-card"><h2>Next jab</h2><div class="next-ring" style="--progress:${next ? 72 : 8}"><div><b>${next ? esc(next.date) : 'Welcome'}</b><span>${next ? esc(`${next.time || ''} ${glpName()}`) : 'Add your first jab to get started.'}</span><button type="button" data-jump="schedule">${next ? 'View schedule' : 'Add jab'}</button></div></div></section>
+  <section class="today-strip"><h2>Today, ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h2><div class="mini-grid"><div><span>Weight</span><b>${weight ? `${esc(weight.weight)} ${esc(weight.unit || db.settings.units)}` : '-'}</b></div><div><span>Calories</span><b>${totals.calories ? Math.round(totals.calories) : '-'}</b></div><div><span>Protein</span><b>${totals.protein ? `${cleanNumber(totals.protein)}g` : '-'}</b></div></div></section>
+  <section class="results-strip"><h2>Results</h2><div class="mini-grid"><div><span>Current BMI</span><b>${bmi ? cleanNumber(bmi) : '-'}</b></div><div><span>To goal</span><b>${progress ? `${Math.round(progress)}%` : '-'}</b></div><div><span>Cost / jab</span><b>${cost ? money(cost) : '-'}</b></div></div></section>
+  <section class="level-card"><h2>Estimated level</h2>${levelSparkline()}<p>Educational estimate from your logged taken injections and typical half-life assumptions.</p></section>`;
 }
 
 function renderProgressFocus() {
@@ -1229,7 +1384,7 @@ $('#onboardingForm').addEventListener('submit', e => {
     });
   }
   if (settingsData.startWeight) {
-    db.weights.unshift({ id: id(), date: today(), weight: settingsData.startWeight, unit: settingsData.units || 'kg', appetite: 'Normal', notes: 'Starting weight from onboarding' });
+    db.weights.unshift({ id: id(), date: settingsData.startDate || today(), weight: settingsData.startWeight, unit: settingsData.units || 'kg', appetite: 'Normal', notes: 'Starting weight from onboarding' });
   }
   persistDb();
   hydrateSettings();
