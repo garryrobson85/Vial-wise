@@ -472,7 +472,17 @@ function updateNextInjectionLabel() {
 }
 
 function nextRingState(next) {
-  if (!next) return { progress: 8, status: 'Add your first jab to get started.', tone: 'empty', action: 'Add jab' };
+  if (next?.date === today()) return { progress: 70, status: 'Jab due today.', tone: 'due', action: 'Mark taken' };
+  const last = [...db.schedule].filter(s => s.status === 'Taken').sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+  if (last) {
+    if (last.date === today()) return { progress: 12, status: 'Jab logged today.', tone: 'ready', action: next ? 'View schedule' : 'Add next jab' };
+    const takenAt = new Date(`${last.date}T${last.time || '12:00'}`);
+    const daysSince = Math.max(1, Math.floor((new Date() - takenAt) / dayMs) + 1);
+    const tone = daysSince <= 4 ? 'ready' : daysSince <= 7 ? 'soon' : 'overdue';
+    const progress = Math.min(100, Math.max(12, (daysSince / 8) * 100));
+    return { progress, status: `Day ${daysSince} since last jab.`, tone, action: next ? 'View schedule' : 'Add next jab' };
+  }
+  if (!next) return { progress: 0, status: 'Add your first jab to get started.', tone: 'empty', action: 'Add jab' };
   const dueAt = new Date(`${next.date}T${next.time || '12:00'}`);
   const now = new Date();
   const hours = (dueAt - now) / (60 * 60 * 1000);
@@ -804,6 +814,16 @@ function goalProgress() {
   return Math.max(0, Math.min(100, ((start - current) / (start - goal)) * 100));
 }
 
+function goalRemainingText() {
+  const goal = weightKg(db.settings.goalWeight, db.settings.units || 'kg');
+  const current = latestWeightKg();
+  if (!goal || !current) return '-';
+  const remainingKg = current - goal;
+  const units = db.settings.units || 'kg';
+  if (units === 'st') return `${cleanNumber(Math.abs(remainingKg / 6.35029))} st`;
+  return `${cleanNumber(Math.abs(remainingKg))} kg`;
+}
+
 function renderSummaryDashboard(spend, value, doses, cost, due, next) {
   let dash = $('#summaryDashboard');
   if (!dash) {
@@ -819,11 +839,15 @@ function renderSummaryDashboard(spend, value, doses, cost, due, next) {
   const bmi = bmiValue();
   const progress = goalProgress();
   const ring = nextRingState(next);
+  const profile = bmrProfile();
+  const target = profile ? Math.round(profile.targets[profile.selected] || profile.targets.medium) : 0;
+  const caloriesLabel = target ? `${Math.round(totals.calories)} / ${target}` : (totals.calories ? Math.round(totals.calories) : '-');
+  const bmrLabel = profile ? `${Math.round(profile.bmr)} kcal` : '-';
   dash.innerHTML = `<div class="summary-head"><button class="hamburger" type="button" data-view="setup">Settings</button><h2>Summary</h2><button class="add-jab" type="button" data-jump="schedule">+ Add jab</button></div>
   <section class="jab-strip"><h2>Jab history</h2><div class="mini-grid"><div><span>Jabs taken</span><b>${taken}</b></div><div><span>Last dose</span><b>${last ? doseText(last.amount || last.amountMcg || currentDose().amount, last.amountUnit || (last.amountMcg ? 'mcg' : currentDose().unit)) : '0 mg'}</b></div><div><span>Next status</span><b>${next ? esc(ring.status) : '-'}</b></div></div></section>
-  <section class="next-ring-card"><h2>Next jab</h2><div class="due-bar ${ring.tone}" style="--progress:${ring.progress}"><div class="due-bar-head"><b>${next ? esc(next.date) : 'Welcome'}</b><span>${next ? esc(`${next.time || ''} - ${ring.status}`) : ring.status}</span></div><div class="due-track" aria-hidden="true"><span></span></div><div class="due-labels"><small>Ready</small><small>Due soon</small><small>Overdue</small></div><button type="button" data-jump="schedule">${ring.action}</button></div></section>
-  <section class="today-strip"><h2>Today, ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h2><div class="mini-grid"><div><span>Weight</span><b>${weight ? `${esc(weight.weight)} ${esc(weight.unit || db.settings.units)}` : '-'}</b></div><div><span>Calories</span><b>${totals.calories ? Math.round(totals.calories) : '-'}</b></div><div><span>Protein</span><b>${totals.protein ? `${cleanNumber(totals.protein)}g` : '-'}</b></div></div></section>
-  <section class="results-strip"><h2>Results</h2><div class="mini-grid"><div><span>Current BMI</span><b>${bmi ? cleanNumber(bmi) : '-'}</b></div><div><span>To goal</span><b>${progress ? `${Math.round(progress)}%` : '-'}</b></div><div><span>Cost / jab</span><b>${cost ? money(cost) : '-'}</b></div></div></section>`;
+  <section class="next-ring-card"><h2>Jab cycle</h2><div class="due-bar ${ring.tone}" style="--progress:${ring.progress}"><div class="due-bar-head"><b>${last ? esc(last.date) : (next ? esc(next.date) : 'Welcome')}</b><span>${next ? esc(`${next.time || ''} - ${ring.status}`) : ring.status}</span></div><div class="due-track" aria-label="Jab cycle day scale"><span></span></div><div class="due-labels"><small>Days 1-4</small><small>Days 5-7</small><small>After 7</small></div><button type="button" data-jump="schedule">${ring.action}</button></div></section>
+  <section class="today-strip"><h2>Today, ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h2><div class="mini-grid"><div><span>Weight</span><b>${weight ? `${esc(weight.weight)} ${esc(weight.unit || db.settings.units)}` : '-'}</b></div><div><span>Calories</span><b>${caloriesLabel}</b></div><div><span>BMR</span><b>${bmrLabel}</b></div></div></section>
+  <section class="results-strip"><h2>Results</h2><div class="mini-grid"><div><span>Current BMI</span><b>${bmi ? cleanNumber(bmi) : '-'}</b></div><div><span>To goal</span><b>${goalRemainingText()}</b><small>${Math.round(progress)}% progress</small></div><div><span>Cost / jab</span><b>${cost ? money(cost) : '-'}</b></div></div></section>`;
 }
 
 function renderProgressFocus() {
@@ -1058,7 +1082,7 @@ function renderNutritionSummary() {
   }
   const target = profile.targets[profile.selected] || profile.targets.medium;
   const left = target - totals.calories;
-  box.innerHTML = `<div class="result-grid"><div><span>BMR</span><b>${Math.round(profile.bmr)} kcal</b></div><div><span>Maintenance</span><b>${Math.round(profile.tdee)} kcal</b></div><div><span>Slow loss</span><b>${Math.round(profile.targets.slow)} kcal</b></div><div><span>Medium loss</span><b>${Math.round(profile.targets.medium)} kcal</b></div><div><span>Aggressive loss</span><b>${Math.round(profile.targets.aggressive)} kcal</b></div><div><span>Selected target</span><b>${Math.round(target)} kcal</b></div><div><span>Logged today</span><b>${Math.round(totals.calories)} kcal</b></div><div><span>${left >= 0 ? 'Remaining' : 'Over target'}</span><b>${Math.abs(Math.round(left))} kcal</b></div></div><p class="fine-print">Uses Mifflin-St Jeor BMR plus your activity level. Planning estimate only, not medical advice.</p>`;
+  box.innerHTML = `<div class="nutrition-summary"><div class="nutrition-hero"><span>Today</span><b>${Math.round(totals.calories)} / ${Math.round(target)} kcal</b><small>${left >= 0 ? `${Math.round(left)} kcal remaining` : `${Math.abs(Math.round(left))} kcal over target`}</small></div><div class="result-grid nutrition-grid"><div><span>BMR</span><b>${Math.round(profile.bmr)} kcal</b></div><div><span>Maintenance</span><b>${Math.round(profile.tdee)} kcal</b></div><div><span>Protein</span><b>${cleanNumber(totals.protein)}g</b></div><div><span>Carbs</span><b>${cleanNumber(totals.carbs)}g</b></div><div><span>Fat</span><b>${cleanNumber(totals.fat)}g</b></div><div><span>Selected pace</span><b>${esc(profile.selected)}</b></div></div><div class="nutrition-targets"><span>Slow ${Math.round(profile.targets.slow)}</span><span>Medium ${Math.round(profile.targets.medium)}</span><span>Aggressive ${Math.round(profile.targets.aggressive)}</span></div><p class="fine-print">Uses Mifflin-St Jeor BMR plus your activity level. Planning estimate only, not medical advice.</p></div>`;
 }
 
 function renderFoodDiary() {
@@ -1528,6 +1552,7 @@ function setSyringeVisual(units, syringeUnits) {
 $$('.quick-row button[data-water]').forEach(btn => btn.addEventListener('click', () => {
   $('#calcWater').value = btn.dataset.water;
   $('#calcWaterUnit').value = 'ml';
+  $$('.quick-row button[data-water]').forEach(item => item.classList.toggle('selected', item === btn));
 }));
 
 $('#calcBtn').addEventListener('click', () => {
