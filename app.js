@@ -122,6 +122,7 @@ function loadDb() {
 }
 
 let db = loadDb();
+let previousView = 'today';
 
 function storageBytes() {
   try {
@@ -454,6 +455,11 @@ document.addEventListener('click', e => {
 function pageTitle() {
   $('#pageTitle').textContent = $('.tab.active')?.textContent || 'Today';
   updateNextInjectionLabel();
+  $('#backBtn')?.classList.toggle('hidden', currentView() === 'today');
+}
+
+function currentView() {
+  return $('.view.active')?.id || 'today';
 }
 
 function formatScheduleLabel(entry) {
@@ -529,6 +535,8 @@ function syncModePanels(modeValue) {
 }
 
 function switchView(view) {
+  const from = currentView();
+  if (from && from !== view) previousView = from;
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === view));
@@ -582,6 +590,7 @@ $('#promptBox')?.addEventListener('click', e => {
 });
 
 $('#settingsBtn').addEventListener('click', () => switchView('setup'));
+$('#backBtn')?.addEventListener('click', () => switchView(previousView && previousView !== currentView() ? previousView : 'today'));
 
 function toggleAppearance() {
   db.settings.appearance = (db.settings.appearance || 'light') === 'dark' ? 'light' : 'dark';
@@ -842,11 +851,11 @@ function renderSummaryDashboard(spend, value, doses, cost, due, next) {
   const profile = bmrProfile();
   const target = profile ? Math.round(profile.targets[profile.selected] || profile.targets.medium) : 0;
   const caloriesLabel = target ? `${Math.round(totals.calories)} / ${target}` : (totals.calories ? Math.round(totals.calories) : '-');
-  const bmrLabel = profile ? `${Math.round(profile.bmr)} kcal` : '-';
+  const maintenanceLabel = profile ? `${Math.round(profile.tdee)} kcal` : '-';
   dash.innerHTML = `<div class="summary-head"><button class="hamburger" type="button" data-view="setup">Settings</button><h2>Summary</h2><button class="add-jab" type="button" data-jump="schedule">+ Add jab</button></div>
   <section class="jab-strip"><h2>Jab history</h2><div class="mini-grid"><div><span>Jabs taken</span><b>${taken}</b></div><div><span>Last dose</span><b>${last ? doseText(last.amount || last.amountMcg || currentDose().amount, last.amountUnit || (last.amountMcg ? 'mcg' : currentDose().unit)) : '0 mg'}</b></div><div><span>Next status</span><b>${next ? esc(ring.status) : '-'}</b></div></div></section>
   <section class="next-ring-card"><h2>Jab cycle</h2><div class="due-bar ${ring.tone}" style="--progress:${ring.progress}"><div class="due-bar-head"><b>${last ? esc(last.date) : (next ? esc(next.date) : 'Welcome')}</b><span>${next ? esc(`${next.time || ''} - ${ring.status}`) : ring.status}</span></div><div class="due-track" aria-label="Jab cycle day scale"><span></span></div><div class="due-labels"><small>Days 1-4</small><small>Days 5-7</small><small>After 7</small></div><button type="button" data-jump="schedule">${ring.action}</button></div></section>
-  <section class="today-strip"><h2>Today, ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h2><div class="mini-grid"><div><span>Weight</span><b>${weight ? `${esc(weight.weight)} ${esc(weight.unit || db.settings.units)}` : '-'}</b></div><div><span>Calories</span><b>${caloriesLabel}</b></div><div><span>BMR</span><b>${bmrLabel}</b></div></div></section>
+  <section class="today-strip"><h2>Today, ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h2><div class="mini-grid"><div><span>Weight</span><b>${weight ? `${esc(weight.weight)} ${esc(weight.unit || db.settings.units)}` : '-'}</b></div><div><span>Calories</span><b>${caloriesLabel}</b></div><div><span>Maintenance</span><b>${maintenanceLabel}</b></div></div></section>
   <section class="results-strip"><h2>Results</h2><div class="mini-grid"><div><span>Current BMI</span><b>${bmi ? cleanNumber(bmi) : '-'}</b></div><div><span>To goal</span><b>${goalRemainingText()}</b><small>${Math.round(progress)}% progress</small></div><div><span>Cost / jab</span><b>${cost ? money(cost) : '-'}</b></div></div></section>`;
 }
 
