@@ -7,14 +7,14 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - Pre-filled pen / Vials mode navigation
 - First-load onboarding for name, style, start weight, GLP-1, current dose and pen/vial mode
 - Guided mobile-first onboarding with progress, back/continue flow, device type, schedule cadence, body basics, goal, routine, motivation and disclaimer
-- Premium dark mobile summary dashboard with next-jab ring, daily cards, results cards and educational medication-level chart
-- Mobile bottom navigation with Settings hub instead of a long top menu
+- Premium mobile summary dashboard with next-jab due bar, daily cards and results cards
+- Mobile bottom navigation with Summary, Jabs, Food, Results and Menu
 - Grouped settings hub styling for mobile
 - Boutique theme options based on user preference
 - Soft glow/neumorphic interface skin with Rose, Aqua, Plum and Slate colour choices
 - Animated page transitions, tactile pressed states and richer click/save feedback sounds
 - Pre-filled pen cost per dose and doses-per-pen tracking
-- Mode-specific setup: pen users see pen cost, vial users are guided into vial inventory
+- Mode-specific setup: pen users see pen cost, vial users add inventory from Vials & Costs
 - GLP-1 onboarding for Semaglutide, Tirzepatide and Retatrutide
 - Dose journey timeline
 - Schedule and injection site rotation tracking
@@ -23,11 +23,11 @@ Private GLP-1 injection tracking companion for local-first dose logs, site rotat
 - Selectable injection site rotation, with abdomen/thighs on by default and arms optional
 - More human-styled body map with recent-site marker intensity
 - Quick mark-as-taken and note edit actions on records
-- First-run setup checklist and backup health test
+- Backup health test
 - Vial, pen and cost-per-injection calculations
 - Peptide-neutral reconstitution calculator with mg/mcg/IU, ml/U-100 units, syringe sizing, rounding, doses per vial and draw warnings
 - Weight, food, symptom, mood and daily check-in logs
-- BMR, maintenance calorie and slow/medium/aggressive loss target estimates from age, height, weight and activity level
+- BMR, maintenance calorie and slow/medium/aggressive loss target estimates from age, cm or feet/inches height, weight and activity level
 - Day-by-day food diary with manual calories, protein, carbs and fat totals
 - Photo-first meal logging with camera/upload, editable AI calorie and macro estimates, and manual fallback
 - Optional local progress photos in the weight tracker with mobile camera/upload support

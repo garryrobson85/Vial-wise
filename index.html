@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#0f766e" />
   <title>VialWise GLP Companion | GLP-1 Injection Tracker</title>
   <link rel="icon" href="assets/vialwise-glp-icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body data-theme="teal">
 <div id="onboardingOverlay" class="onboarding-overlay hidden">
@@ -26,7 +26,10 @@
       <label>Start date<input name="startDate" type="date"></label>
       <label>Goal weight<input name="goalWeight" type="number" step="0.1" min="0"></label>
       <label>Age<input name="age" type="number" step="1" min="13" max="100"></label>
+      <label>Height unit<select name="heightUnit"><option value="cm">Centimetres</option><option value="ftin">Feet / inches</option></select></label>
       <label>Height (cm)<input name="heightCm" type="number" step="0.1" min="80" max="230"></label>
+      <label>Height feet<input name="heightFt" type="number" step="1" min="3" max="8" placeholder="5"></label>
+      <label>Height inches<input name="heightIn" type="number" step="0.1" min="0" max="11.9" placeholder="7"></label>
       <label>Activity level<select name="activityLevel"><option value="sedentary">Mostly sitting</option><option value="light">Lightly active</option><option value="moderate">Moderately active</option><option value="active">Very active</option></select></label>
       <label>Calorie target<select name="caloriePace"><option value="slow">Slow loss</option><option value="medium">Medium loss</option><option value="aggressive">Aggressive loss</option></select></label>
       <label>Weight unit<select name="units"><option>kg</option><option>st</option></select></label>
@@ -38,26 +41,6 @@
       <label>How often?<select name="scheduleEvery"><option value="1">Every day</option><option value="7">Every 7 days</option><option value="14">Every 14 days</option><option value="custom">Custom</option></select></label>
       <label class="wide">What is driving you?<select name="motivation"><option value="health">To improve my health</option><option value="family">To show up for people I love</option><option value="confidence">To feel more confident</option><option value="energy">To boost energy and strength</option><option value="clothes">To feel good in clothes I love again</option></select></label>
       <div class="mode-panel pen-only wide"><h2>Pre-filled pen setup</h2><div class="form-grid"><label>Pen cost (GBP)<input name="penCost" type="number" step="0.01" min="0"></label><label>Doses per pen<input name="penDoses" type="number" step="1" min="0" placeholder="Example: 4"></label></div></div>
-      <div class="mode-panel vial-only wide">
-        <h2>Start vial inventory</h2>
-        <p class="muted">Add your first vial or order now. You can edit it later in Vials & Costs.</p>
-        <div class="form-grid">
-          <label>Inventory name<input name="onboardVialName" placeholder="Example: Tirzepatide 5mg vials"></label>
-          <label>Number of vials/items<input name="onboardVialQuantity" type="number" min="1" step="1" value="1"></label>
-          <label>Amount per vial/item<input name="onboardVialAmount" type="number" min="0" step="0.001"></label>
-          <label>Amount unit<select name="onboardVialAmountUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label>
-          <label>Usual dose from this vial<input name="onboardVialDose" type="number" min="0" step="0.001" placeholder="Defaults to current dose"></label>
-          <label>Dose unit<select name="onboardVialDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label>
-          <label>Water added per vial<input name="onboardVialWater" type="number" min="0" step="0.01"></label>
-          <label>Water unit<select name="onboardVialWaterUnit"><option value="ml">ml</option><option value="units">U-100 units</option></select></label>
-          <label>Remaining amount<input name="onboardVialRemaining" type="number" min="0" step="0.001" placeholder="Defaults to total amount"></label>
-          <label>Remaining unit<select name="onboardVialRemainingUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label>
-          <label>Total order cost (GBP)<input name="onboardVialCost" type="number" min="0" step="0.01"></label>
-          <label>Batch / order ref<input name="onboardVialBatch" placeholder="Optional"></label>
-          <label>Expiry<input name="onboardVialExpiry" type="date"></label>
-          <label class="wide">Inventory notes<textarea name="onboardVialNotes" rows="2" placeholder="Storage, supplier, order details"></textarea></label>
-        </div>
-      </div>
       <label class="check-label wide"><input name="healthDisclaimerAccepted" type="checkbox" value="yes"> I understand VialWise is for tracking and education only, not medical advice.</label>
     </div>
     <button class="primary wide" type="submit">Start tracking</button>
@@ -97,12 +80,11 @@
   <main class="main-content">
     <header class="topbar">
       <div><p class="eyebrow" id="nextInjectionLabel">Next injection: not scheduled</p><h1 id="pageTitle">Today</h1></div>
-      <div class="top-actions"><button id="settingsBtn" class="ghost" type="button">Settings</button></div>
+      <div class="top-actions"><button id="appearanceToggle" class="ghost appearance-toggle" type="button">Dark mode</button><button id="settingsBtn" class="ghost" type="button">Settings</button></div>
     </header>
     <section class="notice"><b>Designed for real daily use:</b> use Pre-filled pen mode for simple pen cost and dose tracking, or Vials mode for fully customised vial, reconstitution and peptide logs.</section>
 
     <section id="today" class="view active">
-      <div class="onboarding-card" id="onboardingChecklist"></div>
       <div class="hero-panel">
         <div><p class="eyebrow">Current plan</p><h2 id="todayPlan">Semaglutide 0.25 mg</h2><p id="todaySub" class="muted">No injection scheduled today.</p></div>
         <div class="hero-metrics"><span id="heroCost">GBP 0.00 / injection</span><span id="heroNext">Next: not scheduled</span></div>
@@ -126,7 +108,7 @@
       </div>
     </section>
 
-    <section id="setup" class="view"><article class="card"><h2>Settings</h2><form id="settingsForm" class="form-grid"><label>Your name<input name="name" placeholder="First name"></label><label>Gender / style<select name="gender"><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option><option value="private">Rather not say</option></select></label><label>Theme<select name="theme"><option value="rose">Boutique rose</option><option value="teal">Clinical teal</option><option value="plum">Soft plum</option><option value="slate">Minimal slate</option></select></label><label>Primary journey<select name="journey"><option>GLP-1 weight journey</option><option>General wellness tracking</option><option>Research tracking</option></select></label><label>Tracking mode<select name="mode"><option value="pen">Pre-filled pen</option><option value="vials">Vials / reconstitution</option></select></label><label>Current GLP-1<select name="glp1" id="settingsGlp1"></select></label><label>Current dose<select name="currentDose" id="settingsDose"></select></label><label>Custom dose amount<input name="customDose" id="settingsCustomDose" type="number" step="0.001" min="0" placeholder="Optional"></label><label>Dose unit<select name="doseUnit" id="settingsDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>How often?<select name="scheduleEvery"><option value="1">Every day</option><option value="7">Every 7 days</option><option value="14">Every 14 days</option><option value="custom">Custom</option></select></label><label>Start weight<input name="startWeight" type="number" step="0.1" min="0"></label><label>Start date<input name="startDate" type="date"></label><label>Goal weight<input name="goalWeight" type="number" step="0.1" min="0"></label><label>Age<input name="age" type="number" step="1" min="13" max="100"></label><label>Height (cm)<input name="heightCm" type="number" step="0.1" min="80" max="230"></label><label>Activity level<select name="activityLevel"><option value="sedentary">Mostly sitting</option><option value="light">Lightly active</option><option value="moderate">Moderately active</option><option value="active">Very active</option></select></label><label>Calorie target<select name="caloriePace"><option value="slow">Slow loss</option><option value="medium">Medium loss</option><option value="aggressive">Aggressive loss</option></select></label><label>Motivation<select name="motivation"><option value="health">To improve my health</option><option value="family">To show up for people I love</option><option value="confidence">To feel more confident</option><option value="energy">To boost energy and strength</option><option value="clothes">To feel good in clothes I love again</option></select></label><div class="mode-panel pen-only wide"><h2>Pre-filled pen cost</h2><div class="form-grid"><label>Pen cost (GBP)<input name="penCost" type="number" step="0.01" min="0" placeholder="For pre-filled pen mode"></label><label>Doses per pen<input name="penDoses" type="number" step="1" min="0" placeholder="Example: 4"></label></div></div><div class="mode-panel vial-only wide"><h2>Vial inventory start</h2><p class="muted">Use Vials & Costs to add number of vials, amount per vial, BAC water and total order cost.</p><button id="startVialInventory" class="ghost" type="button">Start vial inventory</button></div><label>Flag trend after<select name="trendThreshold"><option value="2">2 matches</option><option value="3">3 matches</option><option value="5">5 matches</option></select></label><label>Sound & haptics<select name="feedback"><option value="on">On</option><option value="off">Off</option></select></label><label>Preferred weight units<select name="units"><option>kg</option><option>st</option></select></label><label class="wide">Personal notes<textarea name="notes" rows="3" placeholder="Goals, reminders, things to discuss with a professional"></textarea></label><button class="primary">Save settings</button><button id="clearBtn" class="danger ghost" type="button">Clear all local data</button><span id="settingsSaved" class="save-note" aria-live="polite"></span></form></article></section>
+    <section id="setup" class="view"><article class="card"><h2>Settings</h2><form id="settingsForm" class="form-grid"><label>Your name<input name="name" placeholder="First name"></label><label>Gender / style<select name="gender"><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option><option value="private">Rather not say</option></select></label><label>Theme<select name="theme"><option value="rose">Boutique rose</option><option value="teal">Clinical teal</option><option value="plum">Soft plum</option><option value="slate">Minimal slate</option></select></label><label>Light / dark<select name="appearance"><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Primary journey<select name="journey"><option>GLP-1 weight journey</option><option>General wellness tracking</option><option>Research tracking</option></select></label><label>Tracking mode<select name="mode"><option value="pen">Pre-filled pen</option><option value="vials">Vials / reconstitution</option></select></label><label>Current GLP-1<select name="glp1" id="settingsGlp1"></select></label><label>Current dose<select name="currentDose" id="settingsDose"></select></label><label>Custom dose amount<input name="customDose" id="settingsCustomDose" type="number" step="0.001" min="0" placeholder="Optional"></label><label>Dose unit<select name="doseUnit" id="settingsDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>How often?<select name="scheduleEvery"><option value="1">Every day</option><option value="7">Every 7 days</option><option value="14">Every 14 days</option><option value="custom">Custom</option></select></label><label>Start weight<input name="startWeight" type="number" step="0.1" min="0"></label><label>Start date<input name="startDate" type="date"></label><label>Goal weight<input name="goalWeight" type="number" step="0.1" min="0"></label><label>Age<input name="age" type="number" step="1" min="13" max="100"></label><label>Height unit<select name="heightUnit"><option value="cm">Centimetres</option><option value="ftin">Feet / inches</option></select></label><label>Height (cm)<input name="heightCm" type="number" step="0.1" min="80" max="230"></label><label>Height feet<input name="heightFt" type="number" step="1" min="3" max="8" placeholder="5"></label><label>Height inches<input name="heightIn" type="number" step="0.1" min="0" max="11.9" placeholder="7"></label><label>Activity level<select name="activityLevel"><option value="sedentary">Mostly sitting</option><option value="light">Lightly active</option><option value="moderate">Moderately active</option><option value="active">Very active</option></select></label><label>Calorie target<select name="caloriePace"><option value="slow">Slow loss</option><option value="medium">Medium loss</option><option value="aggressive">Aggressive loss</option></select></label><label>Motivation<select name="motivation"><option value="health">To improve my health</option><option value="family">To show up for people I love</option><option value="confidence">To feel more confident</option><option value="energy">To boost energy and strength</option><option value="clothes">To feel good in clothes I love again</option></select></label><div class="mode-panel pen-only wide"><h2>Pre-filled pen cost</h2><div class="form-grid"><label>Pen cost (GBP)<input name="penCost" type="number" step="0.01" min="0" placeholder="For pre-filled pen mode"></label><label>Doses per pen<input name="penDoses" type="number" step="1" min="0" placeholder="Example: 4"></label></div></div><div class="mode-panel vial-only wide"><h2>Vial inventory start</h2><p class="muted">Use Vials & Costs to add number of vials, amount per vial, BAC water and total order cost.</p><button id="startVialInventory" class="ghost" type="button">Start vial inventory</button></div><label>Flag trend after<select name="trendThreshold"><option value="2">2 matches</option><option value="3">3 matches</option><option value="5">5 matches</option></select></label><label>Sound & haptics<select name="feedback"><option value="on">On</option><option value="off">Off</option></select></label><label>Preferred weight units<select name="units"><option>kg</option><option>st</option></select></label><label class="wide">Personal notes<textarea name="notes" rows="3" placeholder="Goals, reminders, things to discuss with a professional"></textarea></label><button class="primary">Save settings</button><button id="clearBtn" class="danger ghost" type="button">Clear all local data</button><span id="settingsSaved" class="save-note" aria-live="polite"></span></form></article></section>
 
     <section id="glp1" class="view"><div class="grid two-col"><article class="card"><h2>Dose journey</h2><p class="muted">Track user-entered dose changes over time so the journey is visible, not just today's current amount.</p><form id="doseHistoryForm" class="form-grid single"><label>Date<input name="date" type="date" required></label><label>Medication<select name="glp1" id="doseHistoryGlp1"></select></label><label>Dose amount<input name="amount" type="number" step="0.001" min="0" required></label><label>Unit<select name="unit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Reason for change, tolerance, clinician notes"></textarea></label><button class="primary">Save dose point</button></form></article><article class="card warning-card"><h2>Red flags</h2><p>Seek urgent medical advice for severe abdominal pain, repeated vomiting, dehydration, chest pain, breathlessness, severe allergic reaction, fainting, confusion, or injection-site infection.</p></article></div><div id="doseHistoryList" class="list"></div></section>
 
@@ -158,12 +140,14 @@
 <nav class="bottom-nav" aria-label="Mobile navigation">
   <button data-view="today">Summary</button>
   <button data-view="schedule">Jabs</button>
+  <button data-view="food">Food</button>
   <button data-view="trends">Results</button>
-  <button data-view="logs">Calendar</button>
-  <button id="mobileMoreBtn" type="button">Settings</button>
+  <button id="mobileMoreBtn" type="button">Menu</button>
 </nav>
 <div id="mobileMoreMenu" class="mobile-more hidden">
-  <button data-view="food">Food</button>
+  <button data-view="setup">Settings / profile</button>
+  <button id="mobileAppearanceToggle" type="button">Dark / light</button>
+  <button data-view="logs">Daily Log</button>
   <button data-view="sites">Site Map</button>
   <button data-view="weight">Weight</button>
   <button data-view="digestion">Digestion</button>
@@ -172,12 +156,10 @@
   <button data-view="vials">Vials & Costs</button>
   <button data-view="calc">Reconstitution</button>
   <button data-view="peptides">Other Peptides</button>
-  <button data-view="setup">Settings</button>
   <button data-view="export">Export / Backup</button>
 </div>
 <script>window.VIALWISE_CONFIG = window.VIALWISE_CONFIG || { aiWorkerUrl: '', geminiApiKey: '' };</script>
-<script src="js/config.js"></script>
-<script src="js/app.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
-
