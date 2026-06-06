@@ -1,166 +1,494 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="VialWise GLP Companion is a private GLP-1 injection tracker for dose schedules, site rotation, weight logs, symptoms, food patterns, vial costs and peptide notes." />
-  <meta name="keywords" content="GLP-1 tracker, GLP companion, semaglutide tracker, tirzepatide tracker, injection schedule, site rotation, peptide tracker, VialWise" />
-  <meta name="apple-mobile-web-app-title" content="VialWise GLP" />
-  <meta name="theme-color" content="#0f766e" />
-  <title>VialWise GLP Companion | GLP-1 Injection Tracker</title>
-  <link rel="icon" href="assets/vialwise-glp-icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Petrair SA | Geneva Energy & Commodities Trading</title>
+  <meta name="description" content="Petrair SA is a Geneva-based physical energy trading company focused on crude oil, Jet A-1, ULSD 10ppm and LPG across Europe, the Mediterranean, Africa and the Middle East.">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="theme-color" content="#111827">
+  <link rel="canonical" href="https://petrair.org/">
+  <link rel="icon" type="image/png" href="images/petrair-logo.png">
+  <link rel="preload" as="image" href="images/petrair-hero-custom.jpg">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="manifest" href="site.webmanifest">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Petrair SA">
+  <meta property="og:title" content="Petrair SA | Geneva Energy & Commodities Trading">
+  <meta property="og:description" content="Physical crude oil and refined-products trading from Geneva, with disciplined logistics, banking, inspection and compliance.">
+  <meta property="og:url" content="https://petrair.org/">
+  <meta property="og:image" content="https://petrair.org/images/petrair-hero-custom.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Petrair SA | Geneva Energy & Commodities Trading">
+  <meta name="twitter:description" content="Geneva-based physical energy trading for crude oil, Jet A-1, ULSD 10ppm and LPG.">
+  <meta name="twitter:image" content="https://petrair.org/images/petrair-hero-custom.jpg">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://petrair.org/#organization",
+      "name": "Petrair SA",
+      "url": "https://petrair.org/",
+      "logo": "https://petrair.org/images/petrair-logo.png",
+      "image": "https://petrair.org/images/petrair-hero-custom.jpg",
+        "legalName": "Petrair SA",
+        "foundingLocation": "Geneva, Switzerland",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Rue du Marche 18",
+          "postalCode": "1204",
+          "addressLocality": "Geneva",
+          "addressCountry": "CH"
+        },
+        "email": "sales@petrairsa.com",
+        "telephone": "+41 22 319 64 03",
+        "areaServed": ["Europe", "Mediterranean", "Africa", "Middle East", "Asia"],
+        "knowsAbout": ["Crude oil trading", "Jet A-1", "ULSD 10ppm", "LPG", "Physical commodities", "Letters of credit", "KYC", "AML"]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://petrair.org/#website",
+        "url": "https://petrair.org/",
+        "name": "Petrair SA",
+        "publisher": {"@id": "https://petrair.org/#organization"},
+        "inLanguage": "en"
+      },
+      {
+        "@type": "Service",
+        "@id": "https://petrair.org/#trading-service",
+        "name": "Physical energy commodities trading",
+        "provider": {"@id": "https://petrair.org/#organization"},
+        "serviceType": "Crude oil and refined-products trading",
+        "areaServed": ["Europe", "Mediterranean", "Africa", "Middle East", "Asia"],
+        "description": "Supply, marketing, logistics coordination and documentary execution for crude oil, Jet A-1, ULSD 10ppm and LPG."
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://petrair.org/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What products does Petrair SA trade?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Petrair SA focuses on crude oil, Jet A-1 aviation fuel, ULSD 10ppm diesel and LPG, supported by documented physical execution."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Where does Petrair SA operate?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Petrair SA is based in Geneva and works across Europe, the Mediterranean, Africa, the Middle East and Asia."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How are enquiries handled?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Qualified counterparties can submit an enquiry to the Geneva desk. Indicative responses are subject to KYC, AML, sanctions screening, product availability and contract terms."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
-<body data-theme="teal">
-<div id="onboardingOverlay" class="onboarding-overlay hidden">
-  <form id="onboardingForm" class="onboarding-panel">
-    <img class="onboarding-logo" src="assets/vialwise-logo-transparent-v2.png" alt="VialWise GLP Companion" />
-    <div class="brand-badge">GLP Companion</div>
-    <p class="eyebrow">One-time setup</p>
-    <h1>Make VialWise GLP Companion yours</h1>
-    <div class="form-grid">
-      <label>Your name<input name="name" placeholder="First name"></label>
-      <label>Gender / style<select name="gender"><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option><option value="private">Rather not say</option></select></label>
-      <label>Theme<select name="theme"><option value="rose">Boutique rose</option><option value="teal">Clinical teal</option><option value="plum">Soft plum</option><option value="slate">Minimal slate</option></select></label>
-      <label>Start weight<input name="startWeight" type="number" step="0.1" min="0"></label>
-      <label>Start date<input name="startDate" type="date"></label>
-      <label>Goal weight<input name="goalWeight" type="number" step="0.1" min="0"></label>
-      <label>Age<input name="age" type="number" step="1" min="13" max="100"></label>
-      <label>Height unit<select name="heightUnit"><option value="cm">Centimetres</option><option value="ftin">Feet / inches</option></select></label>
-      <label>Height (cm)<input name="heightCm" type="number" step="0.1" min="80" max="230"></label>
-      <label>Height feet<input name="heightFt" type="number" step="1" min="3" max="8" placeholder="5"></label>
-      <label>Height inches<input name="heightIn" type="number" step="0.1" min="0" max="11.9" placeholder="7"></label>
-      <label>Activity level<select name="activityLevel"><option value="sedentary">Mostly sitting</option><option value="light">Lightly active</option><option value="moderate">Moderately active</option><option value="active">Very active</option></select></label>
-      <label>Calorie target<select name="caloriePace"><option value="slow">Slow loss</option><option value="medium">Medium loss</option><option value="aggressive">Aggressive loss</option></select></label>
-      <label>Weight unit<select name="units"><option>kg</option><option>st</option></select></label>
-      <label>Tracking mode<select name="mode"><option value="pen">Pre-filled pen</option><option value="vials">Vials / reconstitution</option></select></label>
-      <label>Current GLP-1<select name="glp1" id="onboardingGlp1"></select></label>
-      <label>Current dose<select name="currentDose" id="onboardingDose"></select></label>
-      <label>Custom dose amount<input name="customDose" type="number" step="0.001" min="0" placeholder="Optional"></label>
-      <label>Dose unit<select name="doseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label>
-      <label>How often?<select name="scheduleEvery"><option value="1">Every day</option><option value="7">Every 7 days</option><option value="14">Every 14 days</option><option value="custom">Custom</option></select></label>
-      <label class="wide">What is driving you?<select name="motivation"><option value="health">To improve my health</option><option value="family">To show up for people I love</option><option value="confidence">To feel more confident</option><option value="energy">To boost energy and strength</option><option value="clothes">To feel good in clothes I love again</option></select></label>
-      <div class="mode-panel pen-only wide"><h2>Pre-filled pen setup</h2><div class="form-grid"><label>Pen cost (GBP)<input name="penCost" type="number" step="0.01" min="0"></label><label>Doses per pen<input name="penDoses" type="number" step="1" min="0" placeholder="Example: 4"></label></div></div>
-      <label class="check-label wide"><input name="healthDisclaimerAccepted" type="checkbox" value="yes"> I understand VialWise is for tracking and education only, not medical advice.</label>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="notice">
+      <span>Geneva, Switzerland</span>
+      <span>Information only. Not an offer to transact.</span>
     </div>
-    <button class="primary wide" type="submit">Start tracking</button>
-  </form>
-</div>
-<div class="app-shell">
-  <aside class="sidebar">
-    <div class="brand">
-      <img class="brand-logo" src="assets/vialwise-logo-transparent-v2.png" alt="VialWise GLP Companion" />
-      <strong class="brand-subtitle">GLP Companion</strong>
-      <span>Private GLP-1 injection, weight, symptom and peptide tracker</span>
+    <div class="market-ticker" aria-label="Energy market indicators">
+      <a class="ticker-label" href="#prices">Market indicators</a>
+      <div class="ticker-window" aria-live="polite">
+        <div class="ticker-track" id="market-ticker-track">
+          <span class="ticker-loading">Loading market indicators...</span>
+        </div>
+      </div>
     </div>
-    <div class="mode-switch desktop-mode-switch" role="group" aria-label="Tracking mode">
-      <button id="penMode" class="mode-btn active" type="button">Pre-filled pen</button>
-      <button id="vialMode" class="mode-btn" type="button">Vials</button>
-    </div>
-    <nav id="tabs" class="nav-tabs">
-      <button class="tab active" data-view="today">Today</button>
-      <button class="tab" data-view="setup">Settings</button>
-      <button class="tab" data-view="glp1">Dose Journey</button>
-      <button class="tab" data-view="schedule">Schedule</button>
-      <button class="tab" data-view="sites">Site Map</button>
-      <button class="tab" data-view="weight">Weight</button>
-      <button class="tab" data-view="food">Food</button>
-      <button class="tab" data-view="symptoms">Symptoms</button>
-      <button class="tab" data-view="digestion">Digestion</button>
-      <button class="tab" data-view="trends">Trends</button>
-      <button class="tab" data-view="logs">Daily Log</button>
-      <button class="tab vial-tab" data-view="vials">Vials & Costs</button>
-      <button class="tab vial-tab" data-view="calc">Reconstitution</button>
-      <button class="tab vial-tab" data-view="peptides">Other Peptides</button>
-      <button class="tab" data-view="export">Export</button>
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="#top" aria-label="Petrair SA home">
+        <img class="brand-logo" src="images/petrair-logo.png" alt="" width="68" height="64">
+        <span>Petrair <small>SA</small></span>
+      </a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
+      <div class="menu" id="menu">
+        <a href="#products" data-i18n="nav.products">Products</a>
+        <a href="#prices" data-i18n="nav.prices">Prices</a>
+        <a href="#operations" data-i18n="nav.operations">Operations</a>
+        <a href="#compliance" data-i18n="nav.compliance">Compliance</a>
+        <a href="#documents" data-i18n="nav.documents">Documents</a>
+        <label class="language-label">
+          <span data-i18n="nav.language">Language</span>
+          <select id="language-select" aria-label="Language">
+            <option value="en">English</option>
+            <option value="fr">Francais</option>
+            <option value="es">Espanol</option>
+            <option value="de">Deutsch</option>
+            <option value="ar">Arabic</option>
+            <option value="zh">Chinese</option>
+          </select>
+        </label>
+        <a href="#contact" class="menu-cta" data-i18n="nav.contact">Contact desk</a>
+      </div>
     </nav>
-    <p class="disclaimer"><b>Safety first:</b> VialWise GLP Companion stores user-entered data and performs arithmetic only. It does not recommend doses, compounds, peptides or treatment.</p>
-  </aside>
+  </header>
 
-  <main class="main-content">
-    <header class="topbar">
-      <button id="backBtn" class="ghost back-btn hidden" type="button">Back</button>
-      <div><p class="eyebrow" id="nextInjectionLabel">Next injection: not scheduled</p><h1 id="pageTitle">Today</h1></div>
-      <div class="top-actions"><button id="appearanceToggle" class="ghost appearance-toggle" type="button">Dark mode</button><button id="settingsBtn" class="ghost" type="button">Settings</button></div>
-    </header>
-    <section class="notice"><b>Designed for real daily use:</b> use Pre-filled pen mode for simple pen cost and dose tracking, or Vials mode for fully customised vial, reconstitution and peptide logs.</section>
-
-    <section id="today" class="view active">
-      <div class="hero-panel">
-        <div><p class="eyebrow">Current plan</p><h2 id="todayPlan">Semaglutide 0.25 mg</h2><p id="todaySub" class="muted">No injection scheduled today.</p></div>
-        <div class="hero-metrics"><span id="heroCost">GBP 0.00 / injection</span><span id="heroNext">Next: not scheduled</span></div>
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-media" aria-hidden="true">
+        <img src="images/petrair-hero-custom.jpg" alt="">
       </div>
-      <div class="grid stats-grid">
-        <article class="card stat"><span>Current GLP-1</span><strong id="statMode">-</strong></article>
-        <article class="card stat"><span>Dose</span><strong id="statDose">-</strong></article>
-        <article class="card stat cost-metric"><span>Total spend</span><strong id="statSpend">GBP 0.00</strong></article>
-        <article class="card stat cost-metric"><span>Remaining value</span><strong id="statValue">GBP 0.00</strong></article>
-        <article class="card stat"><span>Doses left</span><strong id="statDoses">0</strong></article>
-        <article class="card stat"><span>Food entries</span><strong id="statFood">0</strong></article>
-      </div>
-      <div class="grid two-col">
-        <article class="card"><h2>Today's focus</h2><div id="todayBox" class="empty">No schedule entries due today.</div></article>
-        <article class="card"><h2>Smart prompts</h2><div id="promptBox" class="prompt-list"></div></article>
-      </div>
-      <article class="card quick-actions"><h2>Quick log</h2><div class="button-row"><button data-jump="schedule" class="primary" type="button">Dose</button><button data-jump="food" type="button">Food</button><button data-jump="symptoms" type="button">Symptom</button><button data-jump="digestion" type="button">Toilet</button><button data-jump="weight" type="button">Weight</button></div></article>
-      <div class="grid two-col">
-        <article class="card cost-metric"><h2>Cost snapshot</h2><div id="costSnapshot" class="result muted">Add a vial or pen to calculate cost per injection.</div></article>
-        <article class="card"><h2>Food & symptom signal</h2><div id="todayInsights" class="muted">Add food and symptom entries to see pattern hints.</div></article>
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow" data-i18n="hero.eyebrow">Physical trading from Geneva</p>
+          <h1 id="hero-title" data-i18n="hero.title">A global market for oil and energy products</h1>
+          <p class="lead" data-i18n="hero.lead">Petrair SA optimises the supply and marketing of crude oil and refined products from Geneva across Europe, the Mediterranean, Africa and the Middle East.</p>
+          <div class="actions">
+            <a class="button primary" href="#contact" data-open-rfq data-i18n="hero.cta1">Request a quotation</a>
+            <a class="button secondary" href="#products" data-i18n="hero.cta2">Explore our trading</a>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section id="setup" class="view"><article class="card"><h2>Settings</h2><form id="settingsForm" class="form-grid"><label>Your name<input name="name" placeholder="First name"></label><label>Gender / style<select name="gender"><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option><option value="private">Rather not say</option></select></label><label>Theme<select name="theme"><option value="rose">Boutique rose</option><option value="teal">Clinical teal</option><option value="plum">Soft plum</option><option value="slate">Minimal slate</option></select></label><label>Light / dark<select name="appearance"><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Primary journey<select name="journey"><option>GLP-1 weight journey</option><option>General wellness tracking</option><option>Research tracking</option></select></label><label>Tracking mode<select name="mode"><option value="pen">Pre-filled pen</option><option value="vials">Vials / reconstitution</option></select></label><label>Current GLP-1<select name="glp1" id="settingsGlp1"></select></label><label>Current dose<select name="currentDose" id="settingsDose"></select></label><label>Custom dose amount<input name="customDose" id="settingsCustomDose" type="number" step="0.001" min="0" placeholder="Optional"></label><label>Dose unit<select name="doseUnit" id="settingsDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>How often?<select name="scheduleEvery"><option value="1">Every day</option><option value="7">Every 7 days</option><option value="14">Every 14 days</option><option value="custom">Custom</option></select></label><label>Start weight<input name="startWeight" type="number" step="0.1" min="0"></label><label>Start date<input name="startDate" type="date"></label><label>Goal weight<input name="goalWeight" type="number" step="0.1" min="0"></label><label>Age<input name="age" type="number" step="1" min="13" max="100"></label><label>Height unit<select name="heightUnit"><option value="cm">Centimetres</option><option value="ftin">Feet / inches</option></select></label><label>Height (cm)<input name="heightCm" type="number" step="0.1" min="80" max="230"></label><label>Height feet<input name="heightFt" type="number" step="1" min="3" max="8" placeholder="5"></label><label>Height inches<input name="heightIn" type="number" step="0.1" min="0" max="11.9" placeholder="7"></label><label>Activity level<select name="activityLevel"><option value="sedentary">Mostly sitting</option><option value="light">Lightly active</option><option value="moderate">Moderately active</option><option value="active">Very active</option></select></label><label>Calorie target<select name="caloriePace"><option value="slow">Slow loss</option><option value="medium">Medium loss</option><option value="aggressive">Aggressive loss</option></select></label><label>Motivation<select name="motivation"><option value="health">To improve my health</option><option value="family">To show up for people I love</option><option value="confidence">To feel more confident</option><option value="energy">To boost energy and strength</option><option value="clothes">To feel good in clothes I love again</option></select></label><div class="mode-panel pen-only wide"><h2>Pre-filled pen cost</h2><div class="form-grid"><label>Pen cost (GBP)<input name="penCost" type="number" step="0.01" min="0" placeholder="For pre-filled pen mode"></label><label>Doses per pen<input name="penDoses" type="number" step="1" min="0" placeholder="Example: 4"></label></div></div><div class="mode-panel vial-only wide"><h2>Vial inventory start</h2><p class="muted">Use Vials & Costs to add number of vials, amount per vial, BAC water and total order cost.</p><button id="startVialInventory" class="ghost" type="button">Start vial inventory</button></div><label>Flag trend after<select name="trendThreshold"><option value="2">2 matches</option><option value="3">3 matches</option><option value="5">5 matches</option></select></label><label>Sound & haptics<select name="feedback"><option value="on">On</option><option value="off">Off</option></select></label><label>Preferred weight units<select name="units"><option>kg</option><option>st</option></select></label><label class="wide">Personal notes<textarea name="notes" rows="3" placeholder="Goals, reminders, things to discuss with a professional"></textarea></label><button class="primary">Save settings</button><button id="clearBtn" class="danger ghost" type="button">Clear all local data</button><span id="settingsSaved" class="save-note" aria-live="polite"></span></form></article></section>
+    <section class="section products premium-offering" id="products" aria-labelledby="products-title">
+      <div class="wrap">
+        <div class="section-head offering-head">
+          <div>
+            <p class="eyebrow" data-i18n="products.eyebrow">Our offering</p>
+            <h2 id="products-title" data-i18n="products.title">Our trading products and services</h2>
+          </div>
+          <div class="offering-copy">
+            <p data-i18n="products.text1">Petrair SA is engaged in the international trading of crude oil, refined petroleum products and selected energy commodities. The company focuses on identifying, structuring and executing physical commodity transactions with established counterparties across global markets.</p>
+            <p data-i18n="products.text2">Activities are guided by disciplined commercial evaluation, prudent risk management and a strong emphasis on transaction execution and counterparty reliability. By combining market expertise, commercial agility and professional operating standards, Petrair aims to build long-term trading relationships and develop a scalable platform capable of supporting repeat transaction flow across multiple products and jurisdictions.</p>
+            <p data-i18n="products.text3">The company's objective is to establish a credible and sustainable presence within international energy markets through consistent commercial performance, operational discipline and responsible growth.</p>
+          </div>
+        </div>
+        <div class="card-grid product-showcase">
+          <article class="product-card" data-spec="crude" role="button" tabindex="0" aria-label="Open Crude Oil overview">
+            <img src="images/petrair-crude-custom.jpg" alt="Oil tanker at dusk representing Petrair SA crude oil trading corridors" loading="lazy" width="1100" height="720">
+            <div class="product-card-body">
+              <span class="product-index">01</span>
+              <h3 data-i18n="product.crude">Crude Oil</h3>
+              <p data-i18n="product.crudeText">One of the world's most actively traded energy commodities and the primary feedstock for the global refining industry.</p>
+            </div>
+          </article>
+          <article class="product-card" data-spec="jet" role="button" tabindex="0" aria-label="Open Jet A-1 overview">
+            <img src="images/petrair-jet-custom.jpg" alt="Jet A-1 fuel hydrant on an airport apron representing aviation fuel supply" loading="lazy" width="1100" height="720">
+            <div class="product-card-body">
+              <span class="product-index">02</span>
+              <h3>Jet A-1</h3>
+              <p data-i18n="product.jetText">The internationally recognised grade of aviation turbine fuel used by commercial airlines, cargo operators and aviation service providers worldwide.</p>
+            </div>
+          </article>
+          <article class="product-card" data-spec="diesel" role="button" tabindex="0" aria-label="Open ULSD 10ppm overview">
+            <img src="images/petrair-diesel-custom-v2.jpg" alt="Refined-products terminal at dusk representing Petrair SA ULSD 10ppm trading" loading="lazy" width="1100" height="720">
+            <div class="product-card-body">
+              <span class="product-index">03</span>
+              <h3>ULSD 10ppm</h3>
+              <p data-i18n="product.dieselText">Ultra Low Sulphur Diesel, a high-quality automotive diesel meeting stringent environmental and performance standards.</p>
+            </div>
+          </article>
+          <article class="product-card" data-spec="lpg" role="button" tabindex="0" aria-label="Open LPG overview">
+            <img src="images/petrair-lpg-custom-v2.jpg" alt="LPG spherical storage tanks at a coastal terminal at dusk" loading="lazy" width="1100" height="720">
+            <div class="product-card-body">
+              <span class="product-index">04</span>
+              <h3>LPG</h3>
+              <p data-i18n="product.lpgText">Liquefied Petroleum Gas, a versatile hydrocarbon fuel of propane and butane used across multiple sectors worldwide.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
 
-    <section id="glp1" class="view"><div class="grid two-col"><article class="card"><h2>Dose journey</h2><p class="muted">Track user-entered dose changes over time so the journey is visible, not just today's current amount.</p><form id="doseHistoryForm" class="form-grid single"><label>Date<input name="date" type="date" required></label><label>Medication<select name="glp1" id="doseHistoryGlp1"></select></label><label>Dose amount<input name="amount" type="number" step="0.001" min="0" required></label><label>Unit<select name="unit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Reason for change, tolerance, clinician notes"></textarea></label><button class="primary">Save dose point</button></form></article><article class="card warning-card"><h2>Red flags</h2><p>Seek urgent medical advice for severe abdominal pain, repeated vomiting, dehydration, chest pain, breathlessness, severe allergic reaction, fainting, confusion, or injection-site infection.</p></article></div><div id="doseHistoryList" class="list"></div></section>
+    <section class="section prices" id="prices" aria-labelledby="prices-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="prices.eyebrow">Energy market indicators</p>
+          <h2 id="prices-title" data-i18n="prices.title">Crude oil and refined-product benchmark prices</h2>
+          <p data-i18n="prices.text">Streaming front-month futures for the benchmarks Petrair SA trades against. Changes are measured against the previous settlement or prior close from the feed.</p>
+        </div>
+        <div class="price-board" aria-live="polite">
+          <div class="price-board-head">
+            <span><span class="status-dot" id="price-status-dot"></span><span id="price-status">Loading</span></span>
+            <span id="price-updated">Not updated yet</span>
+          </div>
+          <div class="price-table-wrap">
+            <table class="price-table">
+              <thead>
+                <tr>
+                  <th data-i18n="prices.instrument">Instrument</th>
+                  <th data-i18n="prices.last">Last price</th>
+                  <th data-i18n="prices.change">Change vs prior close</th>
+                  <th class="hide-sm" data-i18n="prices.trend">Trend</th>
+                  <th data-i18n="prices.type">Type</th>
+                </tr>
+              </thead>
+              <tbody id="price-rows"></tbody>
+            </table>
+          </div>
+          <p class="price-foot" data-i18n="prices.foot">Source: front-month futures via configured public market feed. Prices are shown in USD per listed unit. Changes reference the previous settlement or prior close supplied by the feed. Indicative, non-tradable and not an offer to transact.</p>
+        </div>
+      </div>
+    </section>
 
-    <section id="schedule" class="view"><article class="card"><h2>Schedule / injection log</h2><form id="scheduleForm" class="form-grid"><label>Medication / item<select name="vialId" id="scheduleVial"></select></label><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time" required></label><label>Amount<input name="amount" id="scheduleAmount" type="number" step="0.001" min="0"></label><label>Amount unit<select name="amountUnit" id="scheduleAmountUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>Site<input name="site" id="siteInput" placeholder="Left abdomen"></label><label>Actual cost (GBP)<input name="actualCost" type="number" step="0.01" min="0" placeholder="auto if blank"></label><label>Status<select name="status"><option>Planned</option><option>Taken</option><option>Missed</option><option>Skipped</option></select></label><label class="check-label"><input name="repeatEnabled" type="checkbox"> Add repeating schedule</label><label>Repeat<select name="repeatEvery"><option value="weekly">Weekly</option><option value="daily">Daily</option></select></label><label>How many entries?<input name="repeatCount" type="number" min="1" max="52" step="1" value="4"></label><label class="wide">Notes<textarea name="notes" rows="3"></textarea></label><button class="primary">Save schedule</button></form></article><div id="scheduleList" class="list"></div></section>
+    <section class="section supply" aria-labelledby="supply-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="supply.eyebrow">Supply chain capability</p>
+          <h2 id="supply-title" data-i18n="supply.title">Moving physical commodities safely, reliably and efficiently</h2>
+          <p data-i18n="supply.text">Petrair SA operates a structured back-to-back trading model designed to minimise market exposure while maintaining disciplined transaction execution.</p>
+        </div>
+        <div class="supply-art" aria-hidden="true">
+          <img src="images/supply-flow-bg.jpg" alt="" loading="lazy" width="1200" height="720">
+        </div>
+        <div class="capability-flow" aria-label="Supply chain capability flow">
+          <div class="flow-rail" aria-hidden="true"><span></span></div>
+          <article>
+            <span class="flow-step">01</span>
+            <strong data-i18n="supply.step1.title">Sourcing</strong>
+            <p data-i18n="supply.step1.text">Engagement with producers, refiners, sellers and qualified buyers across active corridors.</p>
+          </article>
+          <article>
+            <span class="flow-step">02</span>
+            <strong data-i18n="supply.step2.title">Logistics</strong>
+            <p data-i18n="supply.step2.text">Third-party shipping and logistics coordination for maritime and hub-based movements.</p>
+          </article>
+          <article>
+            <span class="flow-step">03</span>
+            <strong data-i18n="supply.step3.title">Inspection</strong>
+            <p data-i18n="supply.step3.text">Quality and quantity controls through recognised independent inspectors where applicable.</p>
+          </article>
+          <article>
+            <span class="flow-step">04</span>
+            <strong data-i18n="supply.step4.title">Finance</strong>
+            <p data-i18n="supply.step4.text">LC-backed, documentary settlement structures for eligible counterparties and transactions.</p>
+          </article>
+          <article>
+            <span class="flow-step">05</span>
+            <strong data-i18n="supply.step5.title">Risk</strong>
+            <p data-i18n="supply.step5.text">Back-to-back discipline, sanctions screening, origin controls and documented terms.</p>
+          </article>
+          <article>
+            <span class="flow-step">06</span>
+            <strong data-i18n="supply.step6.title">Delivery</strong>
+            <p data-i18n="supply.step6.text">Clear commercial documentation from enquiry through nomination, inspection and settlement.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-    <section id="sites" class="view"><div class="grid two-col"><article class="card"><h2>Injection site rotation</h2><div class="site-summary" id="siteSummary">No site history yet.</div><div class="site-picker" id="sitePicker"><label><input type="checkbox" value="Left abdomen" checked> Left abdomen</label><label><input type="checkbox" value="Right abdomen" checked> Right abdomen</label><label><input type="checkbox" value="Left thigh" checked> Left thigh</label><label><input type="checkbox" value="Right thigh" checked> Right thigh</label><label><input type="checkbox" value="Left upper arm"> Left upper arm</label><label><input type="checkbox" value="Right upper arm"> Right upper arm</label></div><div class="body-visual" aria-label="Injection site map"><div class="body-shape"><div class="head"></div><div class="torso"></div><div class="arm left"></div><div class="arm right"></div><div class="leg left"></div><div class="leg right"></div><button class="site-marker abdomen-left" data-site="Left abdomen" aria-label="Left abdomen"><span id="markLeftAbdomen">0</span></button><button class="site-marker abdomen-right" data-site="Right abdomen" aria-label="Right abdomen"><span id="markRightAbdomen">0</span></button><button class="site-marker thigh-left" data-site="Left thigh" aria-label="Left thigh"><span id="markLeftThigh">0</span></button><button class="site-marker thigh-right" data-site="Right thigh" aria-label="Right thigh"><span id="markRightThigh">0</span></button><button class="site-marker arm-left" data-site="Left upper arm" aria-label="Left upper arm"><span id="markLeftUpperArm">0</span></button><button class="site-marker arm-right" data-site="Right upper arm" aria-label="Right upper arm"><span id="markRightUpperArm">0</span></button></div></div><div class="body-map"><button data-site="Left abdomen">Left abdomen</button><button data-site="Right abdomen">Right abdomen</button><button data-site="Left thigh">Left thigh</button><button data-site="Right thigh">Right thigh</button><button data-site="Left upper arm">Left upper arm</button><button data-site="Right upper arm">Right upper arm</button></div><p id="selectedSite" class="muted">Tap a site to copy it into the schedule form.</p></article><article class="card"><h2>Last 8 weeks</h2><div id="siteHistory" class="list"><div class="empty">No taken injections in the last 8 weeks.</div></div></article></div></section>
+    <section class="section operations process-continuation" id="operations" aria-labelledby="operations-title">
+      <div class="wrap split">
+        <div>
+          <p class="eyebrow" data-i18n="ops.eyebrow">How we operate</p>
+          <h2 id="operations-title" data-i18n="ops.title">Disciplined trading, banking and inspection</h2>
+          <p data-i18n="ops.text">Petrair SA operates a structured back-to-back trading model designed to minimise market exposure while maintaining disciplined transaction execution. Transactions are settled under LC-backed mechanisms with pricing linked to Platts benchmarks and independent SGS inspection at every transfer point.</p>
+        </div>
+        <div class="process-list" aria-label="Operating standards">
+          <div><span>01</span><strong data-i18n="ops.step1.title">Inspection</strong><p data-i18n="ops.step1.text">SGS and internationally recognised inspectors at every transfer point.</p></div>
+          <div><span>02</span><strong data-i18n="ops.step2.title">Logistics</strong><p data-i18n="ops.step2.text">Third-party shipping and logistics support across corridors.</p></div>
+          <div><span>03</span><strong data-i18n="ops.step3.title">Settlement</strong><p data-i18n="ops.step3.text">Bank-controlled, fully documented LC execution.</p></div>
+          <div><span>04</span><strong data-i18n="ops.step4.title">Pricing</strong><p data-i18n="ops.step4.text">Platts-linked benchmarks, transparent and auditable.</p></div>
+        </div>
+      </div>
+    </section>
 
-    <section id="weight" class="view"><article class="card"><h2>Weight tracker</h2><form id="weightForm" class="form-grid"><label>Date<input name="date" type="date" required></label><label>Weight<input name="weight" type="number" step="0.1" min="0" required></label><label>Unit<select name="unit"><option>kg</option><option>st</option></select></label><label>Waist<input name="waist"></label><label>Appetite<select name="appetite"><option>Normal</option><option>Lower</option><option>Very low</option><option>Higher</option></select></label><label class="wide">Progress photo<input name="photo" type="file" accept="image/*" capture="environment"></label><label class="wide">Notes<textarea name="notes" rows="3"></textarea></label><button class="primary">Save weight</button></form><p class="fine-print">Photos are stored locally in this browser and may increase storage use.</p></article><article class="card"><h2>Progress photos</h2><div id="photoGallery" class="photo-gallery"><div class="empty">No progress photos yet.</div></div></article><div id="weightList" class="list"></div></section>
+    <section class="section reach" aria-labelledby="reach-title">
+      <div class="wrap">
+        <div class="section-head compact">
+          <p class="eyebrow" data-i18n="reach.eyebrow">Our offices</p>
+          <h2 id="reach-title" data-i18n="reach.title">We supply and market crude oil and refining products globally</h2>
+          <p data-i18n="reach.text">We take care of maritime transport and the management of product coverage in the financial derivatives markets. Check out all the details with our specialists in Geneva and our regional desks.</p>
+        </div>
+        <div class="map-band">
+          <div class="route-map" role="img" aria-label="Petrair SA global trade lanes: North America, North Atlantic and Northern Europe, Western Mediterranean, East and Sub-Saharan Africa, Middle East and South Asia, with Geneva head office.">
+            <img src="images/petrair-tradelanes-list.png" alt="Petrair SA global trade lanes map with route list and Geneva head office marker" loading="lazy" width="2048" height="731">
+            <span class="geneva-pulse" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <section id="food" class="view"><div class="grid two-col"><article class="card"><h2>Food diary</h2><p class="muted">Save manual meals, snacks and drinks day by day. Photos are optional.</p><form id="foodForm" class="form-grid single"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time"></label><label>Meal type<select name="mealType"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Drink</option><option>Meal</option></select></label><label>Food / drink<input name="meal" required placeholder="Eggs, soup, coffee"></label><label>Portion<select name="portion"><option>Small</option><option>Normal</option><option>Large</option><option>Custom</option></select></label><label>Calories<input name="calories" type="number" min="0" step="1" placeholder="kcal"></label><label>Protein (g)<input name="protein" type="number" min="0" step="0.1"></label><label>Carbs (g)<input name="carbs" type="number" min="0" step="0.1"></label><label>Fat (g)<input name="fat" type="number" min="0" step="0.1"></label><label>Fatty?<select name="fatty"><option>No</option><option>Yes</option></select></label><label>Spicy?<select name="spicy"><option>No</option><option>Yes</option></select></label><label>Caffeine?<select name="caffeine"><option>No</option><option>Yes</option></select></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Sauces, alcohol, symptoms, hunger, restaurant, estimated portion"></textarea></label><button class="primary">Save food entry</button></form></article><article class="card"><h2>AI food suggestions</h2><p class="muted">Tell VialWise what you fancy and it will suggest a gentler, higher-protein alternative with a simple recipe.</p><form id="mealIdeaForm" class="form-grid single"><label>What do you want to eat?<input name="craving" required placeholder="Pizza, curry, burger, pasta, something sweet"></label><label>Preference<select name="preference"><option>High-protein</option><option>Gentle on nausea</option><option>Lower-fat</option><option>Quick meal</option><option>Vegetarian</option></select></label><div class="button-row"><button class="primary">Suggest alternative</button><button id="regenerateMeal" class="ghost" type="button">Regenerate</button></div></form><div id="mealIdeaResult" class="result muted">Enter a craving to get a healthier alternative and simple recipe.</div></article></div><article class="card"><h2>Daily nutrition</h2><div id="nutritionSummary" class="result muted">Add BMR details and food entries to see daily totals.</div></article><article class="card ai-worker-card"><h2>AI Worker status</h2><p class="muted">Food swaps and meal estimates use the private Cloudflare Worker when configured. The API key is not stored in the app.</p><form id="geminiForm" class="form-grid"><label class="wide">Legacy browser key<input name="geminiApiKey" type="password" autocomplete="off" placeholder="Disabled"></label><label>Model<select name="geminiModel"><option value="claude-sonnet-4-6">Claude Sonnet</option></select></label><label>Use AI Worker?<select name="useGemini"><option value="yes">Yes, if Worker works</option><option value="no">No, app fallback only</option></select></label><button class="primary">Save AI settings</button><button id="clearGeminiKey" class="ghost" type="button">Clear local key</button></form><details class="setup-help"><summary>How the private Worker works</summary><ol><li>The app sends food requests to the Cloudflare Worker.</li><li>The Worker reads `ANTHROPIC_API_KEY` from Cloudflare secrets.</li><li>Claude Sonnet returns a structured estimate or recipe idea.</li><li>If the Worker fails or quota is reached, VialWise falls back automatically.</li></ol><p class="fine-print">Static websites cannot truly hide a browser-side API key, so keys belong in the Worker secret only.</p></details><div id="geminiStatus" class="result muted">AI Worker is optional. Built-in suggestions work without a key.</div></article><div id="foodList" class="list"></div></section>
+    <section class="section compliance" id="compliance" aria-labelledby="compliance-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="compliance.eyebrow">Compliance & Risk</p>
+          <h2 id="compliance-title" data-i18n="compliance.title">Strict standards, end-to-end</h2>
+          <p data-i18n="compliance.text">Petrair SA maintains a strict non-sanctioned origin policy together with full KYC and AML compliance standards. Operations rely on independent inspection, bank-controlled settlement, transaction-based insurance and document-controlled trade execution.</p>
+        </div>
+        <div class="checks">
+          <div data-i18n="compliance.check1">Non-sanctioned origin</div>
+          <div data-i18n="compliance.check2">Full KYC / AML</div>
+          <div data-i18n="compliance.check3">Independent inspection</div>
+          <div data-i18n="compliance.check4">Bank-controlled settlement</div>
+          <div data-i18n="compliance.check5">Transaction insurance</div>
+          <div data-i18n="compliance.check6">Document-controlled execution</div>
+        </div>
+      </div>
+    </section>
 
-    <section id="symptoms" class="view"><article class="card"><h2>Symptom diary</h2><form id="symptomForm" class="form-grid"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time"></label><label>Symptom<input name="symptom" required placeholder="Nausea, reflux, constipation"></label><label>Severity 0-10<input name="severity" type="number" min="0" max="10" step="1"></label><label>Possible trigger<input name="trigger" placeholder="Food, timing, stress"></label><label class="wide">Notes<textarea name="notes" rows="3"></textarea></label><button class="primary">Save symptom</button></form></article><article class="card"><h2>Food and symptom links</h2><div id="foodInsights" class="muted">Add food and symptom entries to see possible links.</div></article><div id="symptomList" class="list"></div></section>
+    <section class="section assurance" aria-labelledby="assurance-title">
+      <div class="wrap split">
+        <div>
+          <p class="eyebrow" data-i18n="assurance.eyebrow">Counterparty assurance</p>
+          <h2 id="assurance-title" data-i18n="assurance.title">Official channels and mandate verification</h2>
+          <p data-i18n="assurance.text">Energy trading attracts false mandate claims and unauthorised approaches. Petrair SA makes its official contact route obvious and asks counterparties to verify any unexpected communication before sharing documents or banking information.</p>
+        </div>
+        <div class="warning-panel">
+          <strong data-i18n="assurance.noticeTitle">Verification notice</strong>
+          <p><span data-i18n="assurance.noticeText">Petrair SA does not treat public website content as an offer, mandate, allocation or commitment to transact. If a third party claims to represent Petrair SA, verify the communication directly through</span> <a href="mailto:sales@petrairsa.com">sales@petrairsa.com</a>.</p>
+        </div>
+      </div>
+    </section>
 
-    <section id="digestion" class="view"><article class="card"><h2>Toilet / digestion log</h2><form id="digestionForm" class="form-grid"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time"></label><label>Visit type<select name="movement"><option>Normal</option><option>Constipation</option><option>Diarrhoea</option><option>Loose stool</option><option>Hard stool</option><option>Bloating only</option><option>Attempted, no movement</option></select></label><label>Bristol type<select name="bristol"><option value="">Not sure / not relevant</option><option>Type 1 - separate hard lumps</option><option>Type 2 - lumpy sausage</option><option>Type 3 - cracked sausage</option><option>Type 4 - smooth sausage</option><option>Type 5 - soft blobs</option><option>Type 6 - mushy</option><option>Type 7 - watery</option></select></label><label>Discomfort 0-10<input name="discomfort" type="number" min="0" max="10" step="1"></label><label>Urgency<select name="urgency"><option>Normal</option><option>Urgent</option><option>Straining</option><option>Incomplete</option></select></label><label>Hydration<select name="hydration"><option>Normal</option><option>Low</option><option>High</option></select></label><label>Possible trigger<input name="trigger" placeholder="Meal, caffeine, dose day, low water"></label><label class="wide">Notes<textarea name="notes" rows="3"></textarea></label><button class="primary">Save toilet visit</button></form></article><article class="card"><h2>Daily frequency</h2><div id="digestionSummary" class="result muted">Add toilet visits to see daily frequency.</div></article><div id="digestionList" class="list"></div></section>
+    <section class="section documents" id="documents" aria-labelledby="documents-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="documents.eyebrow">Document centre</p>
+          <h2 id="documents-title" data-i18n="documents.title">Reference documents for qualified counterparties</h2>
+          <p data-i18n="documents.text">Use this section for official PDFs when they are ready. Until then, the links are clearly marked as requested-by-email so visitors do not hit broken placeholder documents.</p>
+        </div>
+        <div class="doc-grid">
+          <a href="mailto:sales@petrairsa.com?subject=Petrair%20SA%20company%20profile%20request"><span data-i18n="documents.item1">Company profile</span> <span data-i18n="documents.request">Request by email</span></a>
+          <a href="mailto:sales@petrairsa.com?subject=Petrair%20SA%20KYC%20AML%20policy%20request"><span data-i18n="documents.item2">KYC / AML policy</span> <span data-i18n="documents.request">Request by email</span></a>
+          <a href="mailto:sales@petrairsa.com?subject=Petrair%20SA%20product%20specifications%20request"><span data-i18n="documents.item3">Product specifications</span> <span data-i18n="documents.request">Request by email</span></a>
+          <a href="mailto:sales@petrairsa.com?subject=Petrair%20SA%20terms%20request"><span data-i18n="documents.item4">General terms</span> <span data-i18n="documents.request">Request by email</span></a>
+        </div>
+      </div>
+    </section>
 
-    <section id="trends" class="view"><article class="card"><h2>Trends</h2><p class="muted">VialWise flags repeated patterns after your selected match threshold. These are pattern hints, not proof that a food or drink caused a symptom.</p><div class="button-row"><label>Flag after<select id="trendThresholdControl"><option value="2">2 matches</option><option value="3">3 matches</option><option value="5">5 matches</option></select></label></div></article><div class="grid two-col"><article class="card"><h2>Food & symptom patterns</h2><div id="symptomTrendList" class="muted">Add food and symptom entries to see trends.</div></article><article class="card"><h2>Food & digestion patterns</h2><div id="digestionTrendList" class="muted">Add food and digestion entries to see trends.</div></article></div></section>
+    <section class="section corporate" aria-labelledby="corporate-title">
+      <div class="wrap contact-grid">
+        <div>
+          <p class="eyebrow" data-i18n="corporate.eyebrow">Corporate information</p>
+          <h2 id="corporate-title" data-i18n="corporate.title">Registered Geneva company details</h2>
+          <p data-i18n="corporate.text">Clear company details are important for trust, due diligence and AI/search interpretation.</p>
+        </div>
+        <dl class="corp-list">
+          <div><dt data-i18n="corporate.legalName">Legal name</dt><dd>Petrair SA</dd></div>
+          <div><dt data-i18n="corporate.legalForm">Legal form</dt><dd data-i18n="corporate.legalFormValue">Societe Anonyme (SA)</dd></div>
+          <div><dt data-i18n="corporate.incorporation">Incorporation</dt><dd data-i18n="corporate.incorporationValue">Geneva, Switzerland</dd></div>
+          <div><dt data-i18n="corporate.registration">Registration</dt><dd>CH-660.0.667.992-7</dd></div>
+          <div><dt data-i18n="corporate.uid">UID / VAT</dt><dd>CHE-107.412.404</dd></div>
+        </dl>
+      </div>
+    </section>
 
-    <section id="logs" class="view"><article class="card"><h2>Daily check-in</h2><form id="logForm" class="form-grid"><label>Date<input name="date" type="date" required></label><label>Appetite 0-10<input name="appetite" type="number" min="0" max="10"></label><label>Nausea 0-10<input name="nausea" type="number" min="0" max="10"></label><label>Energy 0-10<input name="energy" type="number" min="0" max="10"></label><label>Mood<select name="mood"><option>Stable</option><option>Low</option><option>Anxious</option><option>Irritable</option><option>Upbeat</option><option>Flat</option></select></label><label>Digestion<select name="digestion"><option>Normal</option><option>Constipation</option><option>Diarrhoea</option><option>Reflux</option><option>Bloating</option></select></label><label>Water intake<input name="water" placeholder="2L"></label><label class="wide">Notes<textarea name="notes" rows="3"></textarea></label><button class="primary">Save log</button></form></article><div id="logList" class="list"></div></section>
+    <section class="section contact" id="contact" aria-labelledby="contact-title">
+      <div class="wrap contact-grid">
+        <div>
+          <p class="eyebrow" data-i18n="contact.eyebrow">Trading desk</p>
+          <h2 id="contact-title" data-i18n="contact.title">Request a quotation</h2>
+          <p data-i18n="contact.text">Send the desk a concise enquiry with product, quantity, delivery location, timing and settlement expectations. The form opens your email client so no sensitive data is stored on the website.</p>
+          <address>
+            Petrair SA<br>
+            Rue du Marche 18<br>
+            1204 Geneva, Switzerland<br>
+            <a href="mailto:sales@petrairsa.com">sales@petrairsa.com</a><br>
+            <a href="tel:+41223196403">+41 22 319 64 03</a>
+          </address>
+        </div>
+        <div class="rfq-panel">
+          <p class="eyebrow" data-i18n="quote.eyebrow">Quotation request</p>
+          <h3 data-i18n="quote.title">Start a trading enquiry with the Geneva desk</h3>
+          <p data-i18n="quote.text">Product, quantity, destination, delivery timing and settlement expectations are enough to start a qualified review.</p>
+          <button class="button primary" type="button" data-open-rfq data-i18n="quote.button">Request a quotation</button>
+        </div>
+      </div>
+    </section>
+  </main>
 
-    <section id="vials" class="view"><article class="card"><h2>Add vial / pen / item</h2><form id="vialForm" class="form-grid"><label>Name<input name="name" id="vialNameInput" required placeholder="Example: Semaglutide 5mg vials"></label><label>Type<select name="type"><option>GLP-1</option><option>Other peptide</option><option>Pen</option><option>Supply item</option></select></label><label>Number of vials/items<input name="quantity" type="number" step="1" min="1" value="1"></label><label>Amount per vial/item<input name="amount" type="number" step="0.001" min="0"></label><label>Amount unit<select name="amountUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>Water added per vial<input name="water" type="number" step="0.01" min="0"></label><label>Water unit<select name="waterUnit"><option value="ml">ml</option><option value="units">U-100 units</option></select></label><label>Remaining total amount<input name="remaining" type="number" step="0.001" min="0" placeholder="Across all vials/items"></label><label>Remaining unit<select name="remainingUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>Usual logged dose<input name="dose" id="vialDoseInput" type="number" step="0.001" min="0"></label><label>Dose unit<select name="doseUnit" id="vialDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option></select></label><label>Total order cost (GBP)<input name="cost" type="number" step="0.01" min="0"></label><label>Batch / lot<input name="batch"></label><label>Supplier/source<input name="supplier"></label><label>Expiry<input name="expiry" type="date"></label><label class="wide">Notes<input name="notes" placeholder="Example: 10 x 5mg vials, 10 units bac water per vial, one dose per vial"></label><button class="primary">Save item</button></form></article><div id="vialList" class="list"></div></section>
-
-    <section id="calc" class="view"><div class="grid two-col"><article class="card"><h2>Peptide reconstitution calculator</h2><form id="calcForm" class="form-grid single"><label>Peptide / compound<select id="calcPeptide"><option value="custom">Custom peptide</option><option value="semaglutide">Semaglutide</option><option value="tirzepatide">Tirzepatide</option><option value="retatrutide">Retatrutide</option><option value="bpc157">BPC-157</option><option value="tb500">TB-500</option><option value="cjc1295">CJC-1295</option><option value="ipamorelin">Ipamorelin</option><option value="pt141">PT-141</option><option value="ghkcu">GHK-Cu</option><option value="hcg">HCG / IU-based</option></select></label><label>Vial amount<input id="calcAmount" type="number" step="0.001" min="0"></label><label>Vial amount unit<select id="calcAmountUnit"><option value="mg">mg</option><option value="mcg">mcg</option><option value="iu">IU</option></select></label><label>BAC water added<input id="calcWater" type="number" step="0.01" min="0"></label><label>Water unit<select id="calcWaterUnit"><option value="ml">ml</option><option value="units">U-100 units</option></select></label><label>Desired dose<input id="calcDose" type="number" step="0.001" min="0"></label><label>Dose unit<select id="calcDoseUnit"><option value="mg">mg</option><option value="mcg">mcg</option><option value="iu">IU</option></select></label><label>Syringe size<select id="calcSyringe"><option value="100">1.0 ml / 100 units</option><option value="50">0.5 ml / 50 units</option><option value="30">0.3 ml / 30 units</option></select></label><label>Round to nearest<select id="calcRounding"><option value="0.1">0.1 unit</option><option value="0.5">0.5 unit</option><option value="1">1 unit</option></select></label><div class="quick-row"><button type="button" data-water="0.5">0.5ml</button><button type="button" data-water="1">1ml</button><button type="button" data-water="2">2ml</button><button type="button" data-water="3">3ml</button><button type="button" data-water="5">5ml</button></div><button id="calcBtn" type="button" class="primary">Calculate</button></form></article><article class="card"><h2>Result</h2><div id="calcResult" class="result muted">Enter vial amount, BAC water and desired dose to calculate concentration, draw volume, syringe units and doses per vial.</div><div id="syringeVisual" class="syringe-visual"><div class="syringe-fill" style="width:0%"></div><span>0 units</span></div><p class="fine-print">Calculation only. This does not decide whether an amount is appropriate or safe.</p></article></div></section>
-
-    <section id="peptides" class="view"><div class="grid two-col"><article class="card"><h2>Other peptide tracker</h2><p class="muted">For user-entered tracking only. VialWise does not suggest peptides, doses, timing or treatment.</p><form id="peptideForm" class="form-grid single"><label>Name<input name="name" required placeholder="Peptide name"></label><label>Category<input name="category" placeholder="Recovery, skin, sleep, wellness"></label><label>Amount<input name="amount" type="number" step="0.001" min="0"></label><label>Unit<select name="unit"><option value="mg">mg</option><option value="mcg">mcg</option><option value="units">units</option></select></label><label>Frequency<input name="frequency" placeholder="User-entered schedule"></label><label>Start date<input name="startDate" type="date"></label><label>Source / batch<input name="source"></label><label>Storage<input name="storage"></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Personal notes, tolerance, questions for a professional"></textarea></label><button class="primary">Save peptide</button></form></article><article class="card"><h2>Peptide symptom log</h2><form id="peptideSymptomForm" class="form-grid single"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time"></label><label>Peptide(s) used<input name="peptides" placeholder="Example: BPC-157, TB-500"></label><label>Symptom / observation<input name="symptom" required placeholder="Sleep, nausea, flushing, headache, mood"></label><label>Severity 0-10<input name="severity" type="number" min="0" max="10" step="1"></label><label>Timing<select name="timing"><option>Same day</option><option>Within 2 hours</option><option>Within 6 hours</option><option>Next day</option><option>Unsure</option></select></label><label class="wide">Notes<textarea name="notes" rows="3" placeholder="Other peptides, GLP-1 dose, food, alcohol, exercise, sleep, anything that may matter"></textarea></label><button class="primary">Save peptide symptom</button></form><p class="fine-print">Pattern spotting only. This does not diagnose interactions or decide whether a combination is safe.</p></article></div><article class="card"><h2>Possible peptide patterns</h2><div id="peptideInsights" class="muted">Add peptide symptom entries to see repeated co-use notes.</div></article><div id="peptideList" class="list"></div><div id="peptideSymptomList" class="list"></div></section>
-
-    <section id="export" class="view"><article class="card"><h2>Data export</h2><p>Data auto-saves in this browser. Export before clearing data, changing devices or using a different browser.</p><div class="button-row"><button id="exportJson" class="primary">Download JSON backup</button><button id="exportCsv" class="ghost">Download CSV summary</button><label class="import-label">Restore JSON<input id="importJson" type="file" accept="application/json"></label><button id="testBackup" class="ghost" type="button">Test backup health</button></div><div id="storageStatus" class="result muted">Checking browser storage...</div><div id="backupHealth" class="result muted">Run a backup health test before relying on exported data.</div></article></section>
-</main>
-</div>
-<nav class="bottom-nav" aria-label="Mobile navigation">
-  <button data-view="today">Summary</button>
-  <button data-view="schedule">Jabs</button>
-  <button data-view="food">Food</button>
-  <button data-view="trends">Results</button>
-  <button id="mobileMoreBtn" type="button">Menu</button>
-</nav>
-<div id="mobileMoreMenu" class="mobile-more hidden">
-  <button data-view="setup">Settings / profile</button>
-  <button id="mobileAppearanceToggle" type="button">Dark / light</button>
-  <button data-view="logs">Daily Log</button>
-  <button data-view="sites">Site Map</button>
-  <button data-view="weight">Weight</button>
-  <button data-view="digestion">Digestion</button>
-  <button data-view="symptoms">Symptoms</button>
-  <button data-view="glp1">Dose Journey</button>
-  <button data-view="vials">Vials & Costs</button>
-  <button data-view="calc">Reconstitution</button>
-  <button data-view="peptides">Other Peptides</button>
-  <button data-view="export">Export / Backup</button>
-</div>
-<script>window.VIALWISE_CONFIG = window.VIALWISE_CONFIG || { aiWorkerUrl: '', geminiApiKey: '' };</script>
-<script src="config.js"></script>
-<script src="app.js"></script>
+  <footer class="footer">
+    <div class="wrap footer-grid">
+      <div>
+        <img class="footer-logo" src="images/petrair-logo.png" alt="" width="40" height="38">
+        <strong>Petrair SA</strong>
+        <p data-i18n="footer.tagline">Geneva energy and commodities trading.</p>
+      </div>
+      <div>
+        <a href="#products" data-i18n="nav.products">Products</a>
+        <a href="#prices" data-i18n="nav.prices">Prices</a>
+        <a href="#operations" data-i18n="nav.operations">Operations</a>
+        <a href="#compliance" data-i18n="nav.compliance">Compliance</a>
+        <a href="#contact" data-i18n="footer.contact">Contact</a>
+      </div>
+      <p data-i18n="footer.legal">Copyright 2026 Petrair SA. Information only. Not an offer to transact.</p>
+    </div>
+  </footer>
+  <div class="modal" id="rfq-modal" hidden>
+    <div class="modal-panel rfq-modal-panel" role="dialog" aria-modal="true" aria-labelledby="rfq-modal-title">
+      <button class="modal-close rfq-modal-close" type="button" aria-label="Close RFQ form">×</button>
+      <p class="eyebrow" data-i18n="contact.eyebrow">Trading desk</p>
+      <h2 id="rfq-modal-title" data-i18n="contact.title">Request a quotation</h2>
+      <form class="rfq-form" id="rfq-form">
+          <label><span data-i18n="form.product">Product</span>
+            <select name="Product">
+              <option>Crude Oil</option>
+              <option>Jet A-1</option>
+              <option>ULSD 10ppm</option>
+              <option>LPG</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label><span data-i18n="form.quantity">Quantity</span>
+            <input name="Quantity" autocomplete="off" placeholder="e.g. 50,000 MT per month">
+          </label>
+          <label><span data-i18n="form.destination">Destination</span>
+            <input name="Destination" autocomplete="shipping locality" placeholder="Port or region">
+          </label>
+          <label><span data-i18n="form.company">Company</span>
+            <input name="Company" autocomplete="organization">
+          </label>
+          <label><span data-i18n="form.name">Your name</span>
+            <input name="Name" autocomplete="name">
+          </label>
+          <label><span data-i18n="form.email">Email</span>
+            <input name="Email" type="email" autocomplete="email" required>
+          </label>
+          <label><span data-i18n="form.phone">Phone (optional)</span>
+            <div class="phone-fields">
+              <select name="CountryCode" aria-label="Country code">
+                <option value="+41">+41 CH</option>
+                <option value="+44">+44 UK</option>
+                <option value="+1">+1 US/CA</option>
+                <option value="+33">+33 FR</option>
+                <option value="+34">+34 ES</option>
+                <option value="+49">+49 DE</option>
+                <option value="+971">+971 UAE</option>
+                <option value="+966">+966 SA</option>
+                <option value="+234">+234 NG</option>
+                <option value="+27">+27 ZA</option>
+              </select>
+              <input name="Phone" autocomplete="tel" placeholder="Phone number">
+            </div>
+          </label>
+          <label><span data-i18n="form.message">Message</span>
+            <textarea name="Message" rows="4" placeholder="Specification, delivery window, Incoterm, payment terms"></textarea>
+          </label>
+          <button class="button primary" type="submit" data-i18n="form.submit">Open email enquiry</button>
+          <p class="form-note" id="form-note" role="status"></p>
+        </form>
+    </div>
+  </div>
+  <div class="modal" id="spec-modal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close" type="button" aria-label="Close product overview">&times;</button>
+      <div class="modal-image" id="modal-image" aria-hidden="true"></div>
+      <p class="eyebrow" id="modal-eyebrow">Product overview</p>
+      <h2 id="modal-title">Product</h2>
+      <p id="modal-body"></p>
+    </div>
+  </div>
+  <script src="js/translations.js" defer></script>
+  <script src="js/script.js" defer></script>
 </body>
 </html>

@@ -1,70 +1,129 @@
-# VialWise GLP Companion
+# Petrair SA Website
 
-Private GLP-1 injection tracking companion for local-first dose logs, site rotation, weight, costs, reconstitution arithmetic, food patterns, symptoms, mood, peptide notes and backups.
+Static website for Petrair SA. Open `index.html` directly for a local preview, or upload the folder contents to your host.
 
-## What is included
+## Project Structure
 
-- Pre-filled pen / Vials mode navigation
-- First-load onboarding for name, style, start weight, GLP-1, current dose and pen/vial mode
-- Guided mobile-first onboarding with progress, back/continue flow, device type, schedule cadence, body basics, goal, routine, motivation and disclaimer
-- Premium mobile summary dashboard with next-jab due bar, daily cards and results cards
-- Mobile bottom navigation with Summary, Jabs, Food, Results and Menu
-- Grouped settings hub styling for mobile
-- Boutique theme options based on user preference
-- Soft glow/neumorphic interface skin with Rose, Aqua, Plum and Slate colour choices
-- Animated page transitions, tactile pressed states and richer click/save feedback sounds
-- Pre-filled pen cost per dose and doses-per-pen tracking
-- Mode-specific setup: pen users see pen cost, vial users add inventory from Vials & Costs
-- GLP-1 onboarding for Semaglutide, Tirzepatide and Retatrutide
-- Dose journey timeline
-- Schedule and injection site rotation tracking
-- Daily or weekly repeat schedule generation
-- Visual body site map with last 8 weeks of taken injections
-- Selectable injection site rotation, with abdomen/thighs on by default and arms optional
-- More human-styled body map with recent-site marker intensity
-- Quick mark-as-taken and note edit actions on records
-- Backup health test
-- Vial, pen and cost-per-injection calculations
-- Peptide-neutral reconstitution calculator with mg/mcg/IU, ml/U-100 units, syringe sizing, rounding, doses per vial and draw warnings
-- Weight, food, symptom, mood and daily check-in logs
-- BMR, maintenance calorie and slow/medium/aggressive loss target estimates from age, cm or feet/inches height, weight and activity level
-- Day-by-day food diary with manual calories, protein, carbs and fat totals
-- Photo-first meal logging with camera/upload, editable AI calorie and macro estimates, and manual fallback
-- Optional local progress photos in the weight tracker with mobile camera/upload support
-- Today focus shows first-versus-latest progress photos on days without scheduled injections
-- Digestion tracker for constipation, diarrhoea, frequency, Bristol type, hydration and discomfort
-- Event-based toilet visit logging with automatic daily frequency summary
-- Mobile quick-log actions on Today
-- Food and symptom correlation hints
-- Trends tab with user-controlled match threshold for food/drink links to symptoms and digestion changes
-- Healthy swap builder with simple recipe suggestions
-- Claude Sonnet food swaps and meal photo estimates through a private Cloudflare Worker
-- Automatic built-in fallback if the AI Worker is missing, over quota, blocked by billing or unavailable
-- Anthropic API call cost estimates from returned token usage, with last-call and saved-total tracking
-- Other peptide tracker for user-entered records
-- Peptide symptom log with repeated co-use pattern notes
-- Optional click/save sounds and mobile vibration feedback
-- JSON backup, JSON restore and CSV summary export
-- Auto-save to browser storage plus IndexedDB for more durable reopen behaviour
+```text
+index.html              Main website markup and SEO schema
+css/styles.css          Site styling
+js/translations.js      Editable UTF-8 language dictionaries
+js/script.js            Site behaviour, prices, modals and form submit
+images/                 Logo, hero, product and route-map assets
+workers/                Cloudflare Worker source files
+```
 
-## Private AI Worker
+## Price Feed Setup
 
-Food photo estimates and food swaps use a Cloudflare Worker so the Anthropic key is not exposed in GitHub Pages, the browser or the APK.
+The price board is already on the page and is wired to this Cloudflare Worker:
 
-- App endpoint: `https://vialwise.garryrobson85.workers.dev`
-- Secret name in Cloudflare: `ANTHROPIC_API_KEY`
-- Model: Claude Sonnet, configured in the Worker
-- Worker setup files: `../cloudflare_worker`
+```text
+https://petrair-prices.garryrobson85.workers.dev/
+```
 
-Do not publish a real Anthropic key in `config.js`, GitHub Pages or the mobile app files.
+If that Worker is returning `{"error":"market feed unavailable"}`, replace the Worker code in Cloudflare with the contents of `workers/petrair-prices-worker.js`, then deploy it again.
 
-## Deploy on GitHub Pages
+1. Go to `https://dash.cloudflare.com/`.
+2. Open **Workers & Pages**.
+3. Choose **Create application**.
+4. Choose **Worker**.
+5. Create/deploy a Worker, then open **Edit code**.
+6. Replace the Worker code with the contents of `workers/petrair-prices-worker.js`.
+7. Deploy it.
+8. Use this Worker URL: `https://petrair-prices.garryrobson85.workers.dev/`.
+9. For a quick local test, open the site with:
 
-1. Upload `index.html`, `style.css`, `app.js` and this `README.md` to the root of a GitHub repo.
-2. Go to Settings > Pages.
-3. Deploy from the main branch root.
-4. Open the GitHub Pages URL.
+```text
+index.html?feed=https://petrair-prices.garryrobson85.workers.dev/
+```
 
-## Safety
+10. The permanent setup is already in `js/script.js`:
 
-VialWise stores user-entered information and performs arithmetic calculations only. It does not recommend doses, compounds, peptides, foods or treatment.
+```js
+const PRICE_FEED_URL = "https://petrair-prices.garryrobson85.workers.dev/";
+```
+
+## Cloudflare Worker Code
+
+The latest price Worker code is included in `workers/petrair-prices-worker.js`. Use that file as the source of truth. It supports a debug mode:
+
+```text
+https://petrair-prices.garryrobson85.workers.dev/?debug=1
+```
+
+## Private Lead Brief Setup
+
+The RFQ form can also send a private salesperson prep brief. This is not visible to the website visitor and does not reject or rank enquiries publicly.
+
+1. Create another Cloudflare Worker.
+2. Paste in the contents of `workers/contactform-worker.js`.
+3. Deploy it.
+4. Add one of these Worker variables:
+
+```text
+LEAD_WEBHOOK_URL = a private Zapier / Make / Google Apps Script webhook
+```
+
+or:
+
+```text
+RESEND_API_KEY = a Resend API key for sending the brief by email
+LEAD_TO_EMAIL = garryrobson85@googlemail.com
+```
+
+Optional AI and Telegram variables:
+
+```text
+ANTHROPIC_API_KEY = your Claude API key for private AI summary/translation/reply prep
+ANTHROPIC_MODEL = claude-sonnet-4-6
+ANTHROPIC_WEB_SEARCH = true
+ANTHROPIC_WEB_SEARCH_MAX = 3
+OPENROUTER_API_KEY = optional fallback OpenRouter key
+OPENROUTER_MODEL = google/gemini-2.5-flash
+TELEGRAM_BOT_TOKEN = your Telegram bot token
+TELEGRAM_CHAT_ID = your Telegram chat ID
+```
+
+The Worker always accepts the RFQ and builds a deterministic salesperson brief. If `ANTHROPIC_API_KEY` is set, it uses Claude first. If `ANTHROPIC_WEB_SEARCH=true`, Claude can also perform limited public web research and return company research, person/LinkedIn context, association assessment and source URLs. If Claude is not set but `OPENROUTER_API_KEY` is set, it uses OpenRouter. If AI fails or no AI key is set, the raw/enriched lead is still delivered through any configured webhook, email or Telegram route.
+
+5. Test locally by opening:
+
+```text
+index.html?leadBrief=https://contactform.garryrobson85.workers.dev/
+```
+
+6. When ready, set the Worker URL permanently near the top of `js/script.js`:
+
+```js
+const LEAD_BRIEF_URL = "https://contactform.garryrobson85.workers.dev/";
+```
+
+The brief includes company/email context, website reachability, prepared Google/LinkedIn/company-registry search links, suggested verification questions and a reply angle. With `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY`, it also adds private AI summary, translation, prep band and reply draft. With Anthropic web search enabled, Telegram also includes compact company/person research and whether the person appears publicly associated with the company. It is preparation only, not legal KYC or sanctions clearance.
+
+## Languages
+
+The language selector is in the top navigation. It stores the selected language in the browser so returning visitors keep their choice. Edit language strings in `js/translations.js`.
+
+Current languages: English, French, Spanish, German, Arabic and Chinese.
+
+## Competitor Review Notes
+
+The remake was checked against the way major energy trading sites present themselves:
+
+- Trafigura emphasises complex supply chains, logistics, storage, finance and end-to-end delivery.
+- Gunvor presents clear product pages with use, supply, demand, transport, storage and financing context.
+- Mercuria gives governance and compliance prominence, including physical, financial and environmental regulation.
+- Gunvor and similar groups publish warnings about unauthorised communications and false mandate claims.
+
+For Petrair, the important missing pieces were:
+
+- Real logo usage rather than a placeholder mark.
+- Product-specification interactions for crude oil, Jet A-1, ULSD 10ppm and LPG.
+- A visible supply-chain capability section.
+- Official-channel and mandate-verification language.
+- Corporate details for due diligence and AI/search confidence.
+- Clearer distinction between market reference prices and executable trade prices.
+
+## Important
+
+Public prices are informational only and must not be described as executable trade prices. Keep the disclaimer visible unless Petrair SA's legal/compliance review says otherwise.
