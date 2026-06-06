@@ -150,28 +150,28 @@ a { color: inherit; }
 }
 .nav {
   width: min(var(--max), calc(100% - 40px));
-  height: 98px;
+  height: 64px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 28px;
+  gap: 24px;
 }
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 18px;
+  gap: 0;
   text-decoration: none;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: .02em;
-  font-size: 1.72rem;
+  font-size: 1.16rem;
 }
 .brand small { color: var(--gold-dark); font-size: .72em; letter-spacing: .12em; }
 .brand-logo {
-  width: 88px;
-  height: 82px;
+  width: 46px;
+  height: 44px;
   object-fit: contain;
-  filter: drop-shadow(0 14px 24px rgba(17,24,39,.24));
+  filter: drop-shadow(0 8px 14px rgba(17,24,39,.18));
 }
 .menu { display: flex; align-items: center; gap: 26px; }
 .menu a {
@@ -257,6 +257,27 @@ a { color: inherit; }
   font-size: clamp(2.8rem, 6.4vw, 6.2rem);
   line-height: .93;
   letter-spacing: 0;
+}
+.hero-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 34px;
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(1.85rem, 3.4vw, 2.85rem);
+  letter-spacing: .02em;
+  text-transform: none;
+}
+.hero-brand img {
+  width: clamp(126px, 12vw, 168px);
+  height: auto;
+  filter: drop-shadow(0 22px 44px rgba(0,0,0,.4));
+}
+.hero-brand small {
+  color: #f1c96c;
+  font-size: .68em;
+  letter-spacing: .14em;
 }
 .lead {
   max-width: 720px;
@@ -506,6 +527,22 @@ a { color: inherit; }
   transform-origin: center;
   transition: transform .38s ease, box-shadow .38s ease, border-color .38s ease;
 }
+.product-card::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  width: 54px;
+  height: 50px;
+  border-radius: 8px;
+  background:
+    rgba(8,13,22,.62)
+    url("../images/petrair-logo.png") center / 74% auto no-repeat;
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 14px 34px rgba(0,0,0,.24);
+  backdrop-filter: blur(8px);
+}
 .product-card:hover,
 .product-card:focus-visible {
   transform: translateY(-14px) scale(1.065);
@@ -609,6 +646,22 @@ a { color: inherit; }
   overflow: hidden;
   opacity: .75;
   box-shadow: 0 28px 90px rgba(17,24,39,.12);
+}
+.supply-art::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  left: 28px;
+  z-index: 2;
+  width: 74px;
+  height: 68px;
+  border-radius: 10px;
+  background:
+    rgba(8,13,22,.58)
+    url("../images/petrair-logo.png") center / 76% auto no-repeat;
+  border: 1px solid rgba(255,255,255,.24);
+  box-shadow: 0 18px 42px rgba(0,0,0,.22);
+  backdrop-filter: blur(8px);
 }
 .supply-art::after {
   content: "";
@@ -823,6 +876,22 @@ a { color: inherit; }
   border-radius: 0;
   overflow: hidden;
   background: #080d16;
+}
+.route-map::before {
+  content: "";
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2;
+  width: 70px;
+  height: 64px;
+  border-radius: 10px;
+  background:
+    rgba(8,13,22,.64)
+    url("../images/petrair-logo.png") center / 76% auto no-repeat;
+  border: 1px solid rgba(185,134,47,.38);
+  box-shadow: 0 18px 46px rgba(0,0,0,.24);
+  backdrop-filter: blur(8px);
 }
 .route-map img {
   width: 100%;
@@ -1238,6 +1307,22 @@ address a { color: #fff; font-weight: 800; }
   position: relative;
   overflow: hidden;
 }
+.modal-image::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  width: 68px;
+  height: 62px;
+  border-radius: 10px;
+  background:
+    rgba(8,13,22,.62)
+    url("../images/petrair-logo.png") center / 76% auto no-repeat;
+  border: 1px solid rgba(255,255,255,.25);
+  box-shadow: 0 18px 42px rgba(0,0,0,.24);
+  backdrop-filter: blur(8px);
+}
 .modal-image::after {
   content: "";
   position: absolute;
@@ -1311,14 +1396,9 @@ address a { color: #fff; font-weight: 800; }
     font-size: .65rem;
   }
   .ticker-track, .ticker-group { gap: 20px; }
-  .nav { height: 76px; }
+  .nav { height: 62px; }
   .brand {
-    gap: 12px;
-    font-size: 1.24rem;
-  }
-  .brand-logo {
-    width: 58px;
-    height: 54px;
+    font-size: 1rem;
   }
   .menu-button {
     display: inline-flex;
@@ -1330,7 +1410,7 @@ address a { color: #fff; font-weight: 800; }
   }
   .menu {
     position: absolute;
-    top: 76px;
+    top: 62px;
     left: 20px;
     right: 20px;
     display: none;
@@ -1351,6 +1431,35 @@ address a { color: #fff; font-weight: 800; }
     padding: 12px;
   }
   .hero { min-height: auto; }
+  .hero-brand {
+    gap: 14px;
+    margin-bottom: 24px;
+    font-size: 1.5rem;
+  }
+  .hero-brand img {
+    width: 94px;
+  }
+  .product-card::before {
+    width: 46px;
+    height: 42px;
+    top: 12px;
+    left: 12px;
+  }
+  .supply-art::before,
+  .route-map::before,
+  .modal-image::before {
+    width: 52px;
+    height: 48px;
+  }
+  .supply-art::before,
+  .modal-image::before {
+    top: 14px;
+    left: 14px;
+  }
+  .route-map::before {
+    right: 14px;
+    bottom: 14px;
+  }
   .hero-grid, .split, .map-band, .contact-grid, .footer-grid {
     grid-template-columns: 1fr;
   }
