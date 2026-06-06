@@ -72,3 +72,21 @@ body[data-appearance="dark"] input,body[data-appearance="dark"] select,body[data
 .wizard-fields label:has(input[type="radio"]) input,.wizard-fields label:has(input[type="checkbox"]) input{justify-self:start!important}
 .wizard-fields input,.wizard-fields select,.wizard-fields textarea{width:100%!important;text-align:left!important}
 @media(max-width:900px){.onboarding-panel{margin-inline:0!important}.wizard-step h2,.wizard-step>.muted{max-width:100%!important}.wizard-fields label{min-height:0!important}.wizard-actions{text-align:left!important}.wizard-next{text-align:center!important}}
+
+/* Mobile Summary header: logo first, actions stacked on the right. */
+.summary-actions{display:grid;gap:4px;justify-items:end}
+.summary-settings{border:0!important;background:transparent!important;box-shadow:none!important;color:var(--muted)!important;font-weight:900!important;padding:2px 0!important}
+@media(max-width:900px){body[data-view="today"] .topbar{display:none!important}.summary-dashboard{margin-top:0!important}.summary-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:12px!important}.summary-head h2{font-size:30px!important;line-height:1.1!important}.summary-actions .add-jab{padding:0!important;text-align:right!important}.summary-settings{text-align:right!important;font-size:13px!important}.mobile-brand-lockup{margin-top:0!important}}
+
+/* Friendly meal camera control. */
+.camera-upload{position:relative!important;display:grid!important;grid-template-columns:auto 1fr!important;align-items:center!important;gap:10px!important;min-height:88px!important;padding:16px!important;border:1px solid color-mix(in srgb,var(--teal) 28%,var(--line))!important;border-radius:22px!important;background:linear-gradient(135deg,color-mix(in srgb,var(--teal) 16%,var(--card)),color-mix(in srgb,var(--mint) 14%,var(--card)))!important;box-shadow:0 16px 34px color-mix(in srgb,var(--teal) 16%,transparent)!important;cursor:pointer!important;color:var(--ink)!important}
+.camera-upload input{position:absolute!important;inset:0!important;opacity:0!important;width:100%!important;height:100%!important;cursor:pointer!important}
+.camera-upload b{font-size:18px!important;line-height:1.1!important;color:var(--ink)!important}
+.camera-upload small{display:block!important;margin-top:4px!important;color:var(--muted)!important;font-weight:800!important}
+.camera-pulse{position:relative;display:grid;place-items:center;width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,var(--teal),var(--mint));color:#fff;font-size:23px;box-shadow:0 14px 30px color-mix(in srgb,var(--teal) 28%,transparent)}
+.camera-pulse:before{content:"";width:25px;height:18px;border:3px solid #fff;border-radius:6px;background:radial-gradient(circle at 50% 52%,#fff 0 3px,transparent 4px)}
+.camera-pulse:after{content:"";position:absolute;inset:-7px;border-radius:23px;border:2px solid color-mix(in srgb,var(--teal) 42%,transparent);animation:cameraPulse 1.8s ease-out infinite}
+@keyframes cameraPulse{0%{opacity:.75;transform:scale(.88)}70%,100%{opacity:0;transform:scale(1.2)}}
+body[data-appearance="dark"] .camera-upload{color:#f7f4fb!important;background:linear-gradient(135deg,color-mix(in srgb,var(--teal) 22%,#131e27),#131e27)!important;border-color:color-mix(in srgb,var(--teal) 34%,#2b3038)!important}
+body[data-appearance="dark"] .camera-upload b{color:#f7f4fb!important}
+@media(max-width:900px){.camera-upload{min-height:96px!important}.camera-upload b{font-size:19px!important}.camera-pulse{width:58px;height:58px;border-radius:20px;font-size:25px}.camera-pulse:after{border-radius:25px}}

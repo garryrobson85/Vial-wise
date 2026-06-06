@@ -320,7 +320,7 @@ function ensureMealPhotoUi() {
   if ($('#mealPhotoForm')) return;
   const grid = $('#food .grid.two-col');
   if (!grid) return;
-  grid.insertAdjacentHTML('beforeend', `<article class="card meal-snap-card"><h2>Snap meal</h2><p class="muted">Take or upload a meal photo, choose the meal type, then review the estimate before saving.</p><form id="mealPhotoForm" class="form-grid single"><label>Meal photo<input name="mealPhoto" type="file" accept="image/*" capture="environment"></label><label>Meal type<select name="mealType"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Drink</option><option>Meal</option></select></label><label>Extra context<textarea name="mealContext" rows="3" placeholder="Example: chicken wrap, small fries, Diet Coke. Mention sauces, oil, restaurant, or anything hidden."></textarea></label><button class="primary" type="submit">Estimate from photo</button></form><div id="mealPhotoPreview" class="meal-photo-preview empty">No meal photo selected.</div><div id="mealScanResult" class="result muted">AI estimates are a starting point. Review before saving.</div></article>`);
+  grid.insertAdjacentHTML('beforeend', `<article class="card meal-snap-card"><h2>Snap meal</h2><p class="muted">Take or upload a meal photo, choose the meal type, then review the estimate before saving.</p><form id="mealPhotoForm" class="form-grid single"><label class="camera-upload"><input name="mealPhoto" type="file" accept="image/*" capture="environment"><span class="camera-pulse" aria-hidden="true"></span><b>Take meal photo</b><small>Camera on mobile, upload on desktop</small></label><label>Meal type<select name="mealType"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Drink</option><option>Meal</option></select></label><label>Extra context<textarea name="mealContext" rows="3" placeholder="Example: chicken wrap, small fries, Diet Coke. Mention sauces, oil, restaurant, or anything hidden."></textarea></label><button class="primary" type="submit">Estimate from photo</button></form><div id="mealPhotoPreview" class="meal-photo-preview empty">No meal photo selected.</div><div id="mealScanResult" class="result muted">AI estimates are a starting point. Review before saving.</div></article>`);
   $('#mealPhotoForm').addEventListener('change', async e => {
     if (e.target.name !== 'mealPhoto') return;
     const file = e.target.files[0];
@@ -541,6 +541,7 @@ function switchView(view) {
   $$('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === view));
   document.body.classList.toggle('settings-hub', view === 'setup');
+  document.body.dataset.view = view;
   $('#mobileMoreMenu')?.classList.remove('open');
   $('#mobileMoreMenu')?.classList.add('hidden');
   pageTitle();
@@ -852,7 +853,7 @@ function renderSummaryDashboard(spend, value, doses, cost, due, next) {
   const target = profile ? Math.round(profile.targets[profile.selected] || profile.targets.medium) : 0;
   const caloriesLabel = target ? `${Math.round(totals.calories)} / ${target}` : (totals.calories ? Math.round(totals.calories) : '-');
   const maintenanceLabel = profile ? `${Math.round(profile.tdee)} kcal` : '-';
-  dash.innerHTML = `<div class="mobile-brand-lockup"><img src="assets/vialwise-logo-transparent-v2.png" alt="VialWise GLP Companion"><span>GLP Companion</span></div><div class="summary-head"><button class="hamburger" type="button" data-view="setup">Settings</button><h2>Summary</h2><button class="add-jab" type="button" data-jump="schedule">+ Add jab</button></div>
+  dash.innerHTML = `<div class="mobile-brand-lockup"><img src="assets/vialwise-logo-transparent-v2.png" alt="VialWise GLP Companion"><span>GLP Companion</span></div><div class="summary-head"><h2>Summary</h2><div class="summary-actions"><button class="add-jab" type="button" data-jump="schedule">+ Add jab</button><button class="summary-settings" type="button" data-view="setup">Settings</button></div></div>
   <section class="jab-strip"><h2>Jab history</h2><div class="mini-grid"><div><span>Jabs taken</span><b>${taken}</b></div><div><span>Last dose</span><b>${last ? doseText(last.amount || last.amountMcg || currentDose().amount, last.amountUnit || (last.amountMcg ? 'mcg' : currentDose().unit)) : '0 mg'}</b></div><div><span>Next status</span><b>${next ? esc(ring.status) : '-'}</b></div></div></section>
   <section class="next-ring-card"><h2>Jab cycle</h2><div class="due-bar ${ring.tone}" style="--progress:${ring.progress}"><div class="due-bar-head"><b>${last ? esc(last.date) : (next ? esc(next.date) : 'Welcome')}</b><span>${next ? esc(`${next.time || ''} - ${ring.status}`) : ring.status}</span></div><div class="due-track" aria-label="Jab cycle day scale"><span></span></div><div class="due-labels"><small>Days 1-4</small><small>Days 5-7</small><small>After 7</small></div><button type="button" data-jump="schedule">${ring.action}</button></div></section>
   <section class="today-strip"><h2>Today, ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h2><div class="mini-grid"><div><span>Weight</span><b>${weight ? `${esc(weight.weight)} ${esc(weight.unit || db.settings.units)}` : '-'}</b></div><div><span>Calories</span><b>${caloriesLabel}</b></div><div><span>Maintenance</span><b>${maintenanceLabel}</b></div></div></section>
@@ -1722,6 +1723,7 @@ async function restoreDurableDb() {
 }
 
 hydrateSettings();
+document.body.dataset.view = currentView();
 setTodayDefaults();
 render();
 restoreDurableDb();
