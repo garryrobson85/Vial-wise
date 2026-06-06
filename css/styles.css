@@ -150,7 +150,7 @@ a { color: inherit; }
 }
 .nav {
   width: min(var(--max), calc(100% - 40px));
-  height: 86px;
+  height: 98px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -160,18 +160,18 @@ a { color: inherit; }
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   text-decoration: none;
   font-weight: 900;
   letter-spacing: .02em;
-  font-size: 1.42rem;
+  font-size: 1.72rem;
 }
 .brand small { color: var(--gold-dark); font-size: .72em; letter-spacing: .12em; }
 .brand-logo {
-  width: 68px;
-  height: 64px;
+  width: 88px;
+  height: 82px;
   object-fit: contain;
-  filter: drop-shadow(0 10px 18px rgba(17,24,39,.2));
+  filter: drop-shadow(0 14px 24px rgba(17,24,39,.24));
 }
 .menu { display: flex; align-items: center; gap: 26px; }
 .menu a {
@@ -1311,14 +1311,14 @@ address a { color: #fff; font-weight: 800; }
     font-size: .65rem;
   }
   .ticker-track, .ticker-group { gap: 20px; }
-  .nav { height: 72px; }
+  .nav { height: 76px; }
   .brand {
     gap: 12px;
-    font-size: 1.18rem;
+    font-size: 1.24rem;
   }
   .brand-logo {
-    width: 52px;
-    height: 50px;
+    width: 58px;
+    height: 54px;
   }
   .menu-button {
     display: inline-flex;
@@ -1330,7 +1330,7 @@ address a { color: #fff; font-weight: 800; }
   }
   .menu {
     position: absolute;
-    top: 72px;
+    top: 76px;
     left: 20px;
     right: 20px;
     display: none;
