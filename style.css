@@ -90,3 +90,11 @@ body[data-appearance="dark"] input,body[data-appearance="dark"] select,body[data
 body[data-appearance="dark"] .camera-upload{color:#f7f4fb!important;background:linear-gradient(135deg,color-mix(in srgb,var(--teal) 22%,#131e27),#131e27)!important;border-color:color-mix(in srgb,var(--teal) 34%,#2b3038)!important}
 body[data-appearance="dark"] .camera-upload b{color:#f7f4fb!important}
 @media(max-width:900px){.camera-upload{min-height:96px!important}.camera-upload b{font-size:19px!important}.camera-pulse{width:58px;height:58px;border-radius:20px;font-size:25px}.camera-pulse:after{border-radius:25px}}
+
+/* Summary spacing polish. */
+.summary-actions{gap:9px!important}
+.summary-settings{border:1px solid var(--line)!important;background:linear-gradient(145deg,color-mix(in srgb,#fff 86%,var(--soft)),color-mix(in srgb,var(--soft) 76%,#fff))!important;box-shadow:8px 8px 18px var(--neu-dark),-8px -8px 18px var(--neu-light)!important;color:var(--teal)!important;border-radius:12px!important;padding:8px 12px!important}
+.due-track{width:min(92%,430px);margin-inline:auto}
+.next-ring-card .due-bar{padding:16px 14px 8px}
+@media(max-width:900px){.summary-actions{gap:10px!important}.summary-settings{font-size:13px!important;padding:8px 12px!important;text-align:center!important}.summary-actions .add-jab{padding:6px 2px!important}.next-ring-card{padding:12px 10px 14px!important}.next-ring-card .due-bar{padding:18px 14px 10px!important}.due-bar-head{padding-inline:2px!important}.due-track{width:88%!important;max-width:330px!important}.due-bar button{margin-top:4px!important}.due-labels{width:88%!important;max-width:330px!important;margin-inline:auto!important}}
+.due-labels{display:none!important}
